@@ -63,12 +63,12 @@ def parse_file(filepath):
             """
             ## Displayed
             if re.search("Displayed", line):
-                device['displayed'] = line.split(".MainActivity: +")[1].split("ms")[0]
+                device['displayed'] = int(line.split(".MainActivity: +")[1].split("ms")[0])
                 device['app_name']  = line.split("Displayed ")[1].split("/.MainActivity")[0]
 
             # Fully Drawn 
             if re.search("Fully drawn", line):
-                device['fully_drawn'] = line.split(".MainActivity: +")[1].split("ms")[0]               
+                device['fully_drawn'] = int(line.split(".MainActivity: +")[1].split("ms")[0])               
 
 
             """
@@ -76,16 +76,20 @@ def parse_file(filepath):
             """
             # CordovaWebView Started 
             if re.search("Apache Cordova native platform", line):
-                device['cordova_started'] = line.split("\d\d-\d\d \d\d:\d\d:")[1].split(":")[0]               
+                device['cordova_start'] = int(line.split("\d\d-\d\d \d\d:\d\d:")[1].split(":")[0])             
 
             # CordovaWebView Loaded
             if re.search("CordovaWebView is running on device made by", line):
-                device['Fully drawn'] = line.split("\d\d-\d\d \d\d:\d\d:")[1].split(":")[0]              
+                device['cordova_loaded'] = int(line.split("\d\d-\d\d \d\d:\d\d:")[1].split(":")[0])        
                     
             # Ionic Native: deviceready
-
+            if re.search("Ionic Native: deviceready", line):
+                device['deviceready'] = int(line.split("deviceready event fired after")[1].split("ms")[0])       
+                
             # Ionic Loaded 
-
+            if re.search("ionic loaded:", line):
+                device['timer_ionic'] = int(line.split(":")[1].split("ms")[0])              
+                
             # Cordova device 
             if re.search("device: Device", line):
                 tmp = line.split('{')[1].split(',')
@@ -97,11 +101,16 @@ def parse_file(filepath):
                 Specific to Boende Appen 
             """
             # checkBackendVersionIsActive
+            if re.search("checkBackendVersionIsActive", line):
+                device['timer_backend'] = int(line.split(":")[1].split("ms")[0])  
 
             # storage.get('loginToken')
+            if re.search("get('loginToken')", line):
+                device['timer_storage'] = int(line.split(":")[1].split("ms")[0])  
 
             # loginService.login()->browser.on('loadstop')
-
+            if re.search("loginService.login()->browser.on('loadstop'):", line):
+                device['timer_loginservice'] = int(line.split(":")[1].split("ms")[0])  
 
 
     print(device)
