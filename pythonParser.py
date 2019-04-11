@@ -62,14 +62,18 @@ def parse_file(filepath):
                 Android specific 
             """
             ## Displayed
-            if re.search("Displayed", line):
+            if re.search("ActivityManager(.*)Displayed(.*).MainActivity", line):
                 device['displayed'] = int(line.split(".MainActivity: +")[1].split("ms")[0])
                 device['app_name']  = line.split("Displayed ")[1].split("/.MainActivity")[0]
 
+            # Displayed BackdropActivity /!\ Must be else if of previous case 
+            elif re.search("ActivityManager(.*)Displayed", line):
+                activity = line.split("/.")[1].split(":"[0]
+                device[activity] = int(line.split("Displayed")[1].split(": +")[1].split("ms")[0])
+            
             # Fully Drawn 
             if re.search("Fully drawn", line):
-                device['fully_drawn'] = int(line.split(".MainActivity: +")[1].split("ms")[0])               
-
+                device['fully_drawn'] = int(line.split("Fully Drawn")[1].split(": +")[1].split("ms")[0])               
 
             """
                 Cordova specific 
