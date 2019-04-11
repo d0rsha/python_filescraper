@@ -15,6 +15,28 @@ args = parser.parse_args()
 increment = 0
 tests = dict()
 
+def timestamp_to_ms(stamp):
+    stamp = re.sub('[+() \n]', '', stamp)
+    time = 0
+    integers = re.split('[h,m,s,ms\n,ms]', stamp)
+    units = re.split('[\d]+', stamp)
+    integers = [x for x in integers if x]
+    units = [x for x in units if x]
+
+    print(integers)
+    print(units)
+    if (len(integers) != len(units)):
+        raise ValueError('# integers does not match # units')
+    index = 0
+    for integer in integers:
+        if units[index] == 'ms':
+            time += int(integer)
+        elif units[index] == 's':
+            time += int(integer) * 1000
+        elif units[index] == 'm':
+            time += int(integer) * 1000 * 1000
+    return time
+
 def search_filepath(root_path, match):
     """
     Open all files which have a given name within root_path.
@@ -55,7 +77,6 @@ def parse_file(filepath):
 
         # Iterate each line
         for line in lines:
-
             # Regex applied to each line 
             
             """
@@ -63,28 +84,36 @@ def parse_file(filepath):
             """
             ## Displayed
             if re.search("ActivityManager(.*)Displayed(.*).MainActivity", line):
-                device['displayed'] = int(line.split(".MainActivity: +")[1].split("ms")[0])
+                if "(total" not in line:
+                    device['displayed'] = timestamp_to_ms(line.split(".MainActivity: +")[1])
+                else:
+                    device['displayed'] = timestamp_to_ms(line.split(".MainActivity: +")[1].split("(total")[0])
+                    device['displayed_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("(total")[1])    
                 device['app_name']  = line.split("Displayed ")[1].split("/.MainActivity")[0]
 
             # Displayed BackdropActivity /!\ Must be else if of previous case 
             elif re.search("ActivityManager(.*)Displayed", line):
-                activity = line.split("/.")[1].split(":"[0]
-                device[activity] = int(line.split("Displayed")[1].split(": +")[1].split("ms")[0])
+                activity = line.split("/.")[1].split(":")[0]
+                if "(total" not in line:
+                    device[activity] = timestamp_to_ms(line.split("/.")[1].split(":")[1])
+                else:
+                    device[activity] = timestamp_to_ms(line.split("/.")[1].split(":")[1].split("(total")[0])
+                    device[activity+'_plus_total'] = timestamp_to_ms(line.split("/.")[1].split(":")[1].split("(total")[1])
             
             # Fully Drawn 
-            if re.search("Fully drawn", line):
-                device['fully_drawn'] = int(line.split("Fully Drawn")[1].split(": +")[1].split("ms")[0])               
+            if re.search("Fully drawn", line):          
+                device['fully_drawn'] = timestamp_to_ms(line.split("Fully drawn")[1].split(":")[1])               
 
             """
                 Cordova specific 
             """
-            # CordovaWebView Started 
+            # CordovaWebView Started (A)
             if re.search("Apache Cordova native platform", line):
-                device['cordova_start'] = int(line.split("\d\d-\d\d \d\d:\d\d:")[1].split(":")[0])             
+                device['cordova_start_tmp'] = float(line.split(":")[2])             
 
-            # CordovaWebView Loaded
+            # CordovaWebView Loaded (B): Calculate diff from started untill loaded == B - A 
             if re.search("CordovaWebView is running on device made by", line):
-                device['cordova_loaded'] = int(line.split("\d\d-\d\d \d\d:\d\d:")[1].split(":")[0])        
+                device['cordova_loadtime'] = float(line.split(":")[2]) - int(device['cordova_start_tmp'])    
                     
             # Ionic Native: deviceready
             if re.search("Ionic Native: deviceready", line):
@@ -96,9 +125,9 @@ def parse_file(filepath):
                 
             # Cordova device 
             if re.search("device: Device", line):
-                tmp = line.split('{')[1].split(',')
+                attributes = line.split('{')[1].split(',')
                 # Add from current format=device: Device {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
-                for items in tmp:
+                for item in attributes:
                     device[item.split(':')[0]] = item.split(':')[1]
 
             """
