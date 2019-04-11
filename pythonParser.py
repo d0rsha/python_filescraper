@@ -3,6 +3,7 @@ import sys
 import os
 import re
 import argparse
+import logging
 
 """
 Arguments to program
@@ -16,15 +17,15 @@ increment = 0
 tests = dict()
 
 def timestamp_to_ms(stamp):
-    stamp = re.sub('[+() \n]', '', stamp)
+    stamp = re.sub('[+()\n total]', '', stamp)
     time = 0
-    integers = re.split('[h,m,s,ms\n,ms]', stamp)
+    integers = re.split('[h,m,s,ms\n,ms,]', stamp)
     units = re.split('[\d]+', stamp)
-    integers = [x for x in integers if x]
-    units = [x for x in units if x]
+    integers = [x for x in integers if x and not x == ' ']
+    units = [x for x in units if x and not x == ' ']
+    print('[INFO:CONSOLE] line=', 'integers', integers)
+    print('[INFO:CONSOLE] line=', 'units   ', units)
 
-    print(integers)
-    print(units)
     if (len(integers) != len(units)):
         raise ValueError('# integers does not match # units')
     index = 0
@@ -66,86 +67,96 @@ def parse_file(filepath):
     ----------
     returns device dictionary
     """
+    linenumber = 0
     device = dict()
     print('Search in ', filepath)
     # Python uses a lookahead buffer internally thus faster reading line by line 
     
     # do stuff here
-    with open(filepath, 'r') as file:
+    try:
+        with open(filepath, 'r') as file:
 
-        lines = file.readlines()
+            lines = file.readlines()
+            # Iterate each line
+            for line in lines:
+                # Regex applied to each line 
+                
+                """
+                    Android specific 
+                """
+                ## Displayed
+                if re.search("ActivityManager(.*)Displayed(.*).MainActivity", line):
+                    if "(total" not in line:
+                        device['displayed'] = timestamp_to_ms(line.split(".MainActivity: +")[1])
+                    else:
+                        device['displayed'] = timestamp_to_ms(line.split(".MainActivity: +")[1].split("total")[0])
+                        device['displayed_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])    
+                    device['app_name']  = line.split("Displayed ")[1].split("/.MainActivity")[0]
 
-        # Iterate each line
-        for line in lines:
-            # Regex applied to each line 
-            
-            """
-                Android specific 
-            """
-            ## Displayed
-            if re.search("ActivityManager(.*)Displayed(.*).MainActivity", line):
-                if "(total" not in line:
-                    device['displayed'] = timestamp_to_ms(line.split(".MainActivity: +")[1])
-                else:
-                    device['displayed'] = timestamp_to_ms(line.split(".MainActivity: +")[1].split("(total")[0])
-                    device['displayed_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("(total")[1])    
-                device['app_name']  = line.split("Displayed ")[1].split("/.MainActivity")[0]
+                # Displayed BackdropActivity /!\ Must be else if of previous case 
+                elif re.search("ActivityManager(.*)Displayed", line):
+                    activity = line.split(".")[-1].split(":")[0]
+                    if "(total" not in line:
+                        device[activity] = timestamp_to_ms(line.split("/.")[1].split(":")[1])
+                    else:
+                        device[activity] = timestamp_to_ms(line.split("/.")[1].split(":")[1].split("total")[0])
+                        device[activity+'_plus_total'] = timestamp_to_ms(line.split("/.")[1].split(":")[1].split("total")[1])
+                
+                # Fully Drawn 
+                if re.search("Fully drawn", line):          
+                    device['fully_drawn'] = timestamp_to_ms(line.split("Fully drawn")[1].split(":")[1])     
 
-            # Displayed BackdropActivity /!\ Must be else if of previous case 
-            elif re.search("ActivityManager(.*)Displayed", line):
-                activity = line.split("/.")[1].split(":")[0]
-                if "(total" not in line:
-                    device[activity] = timestamp_to_ms(line.split("/.")[1].split(":")[1])
-                else:
-                    device[activity] = timestamp_to_ms(line.split("/.")[1].split(":")[1].split("(total")[0])
-                    device[activity+'_plus_total'] = timestamp_to_ms(line.split("/.")[1].split(":")[1].split("(total")[1])
-            
-            # Fully Drawn 
-            if re.search("Fully drawn", line):          
-                device['fully_drawn'] = timestamp_to_ms(line.split("Fully drawn")[1].split(":")[1])               
+                # Package installed 
+                if re.search("I\/Pm\([0-9]+\)(.*)Package(.*)installed", line) and "android" not in line:          
+                    device['install_time'] = timestamp_to_ms(line.split("installed in")[1]) 
+                        
 
-            """
-                Cordova specific 
-            """
-            # CordovaWebView Started (A)
-            if re.search("Apache Cordova native platform", line):
-                device['cordova_start_tmp'] = float(line.split(":")[2])             
+                """
+                    Cordova specific 
+                """
+                # CordovaWebView Started (A)
+                if re.search("Apache Cordova native platform", line):
+                    device['cordova_start_tmp'] = float(line.split(":")[2])             
 
-            # CordovaWebView Loaded (B): Calculate diff from started untill loaded == B - A 
-            if re.search("CordovaWebView is running on device made by", line):
-                device['cordova_loadtime'] = float(line.split(":")[2]) - int(device['cordova_start_tmp'])    
+                # CordovaWebView Loaded (B): Calculate diff from started untill loaded == B - A 
+                if re.search("CordovaWebView is running on device made by", line):
+                    device['cordova_loadtime'] = float(line.split(":")[2]) - int(device['cordova_start_tmp'])    
+                        
+                # Ionic Native: deviceready
+                if re.search("Ionic Native: deviceready", line):
+                    device['deviceready'] = int(line.split("deviceready event fired after")[1].split("ms")[0])       
                     
-            # Ionic Native: deviceready
-            if re.search("Ionic Native: deviceready", line):
-                device['deviceready'] = int(line.split("deviceready event fired after")[1].split("ms")[0])       
-                
-            # Ionic Loaded 
-            if re.search("ionic loaded:", line):
-                device['timer_ionic'] = int(line.split(":")[1].split("ms")[0])              
-                
-            # Cordova device 
-            if re.search("device: Device", line):
-                attributes = line.split('{')[1].split(',')
-                # Add from current format=device: Device {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
-                for item in attributes:
-                    device[item.split(':')[0]] = item.split(':')[1]
+                # Ionic Loaded 
+                if re.search("ionic loaded:", line):
+                    device['timer_ionic'] = int(line.split(":")[1].split("ms")[0])              
+                    
+                # Cordova device 
+                if re.search("device: Device", line):
+                    attributes = line.split('{')[1].split(',')
+                    # Add from current format=device: Device {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
+                    for item in attributes:
+                        device[item.split(':')[0]] = item.split(':')[1]
 
-            """
-                Specific to Boende Appen 
-            """
-            # checkBackendVersionIsActive
-            if re.search("checkBackendVersionIsActive", line):
-                device['timer_backend'] = int(line.split(":")[1].split("ms")[0])  
+                """
+                    Specific to Boende Appen 
+                """
+                # checkBackendVersionIsActive
+                if re.search("checkBackendVersionIsActive", line):
+                    device['timer_backend'] = int(line.split(":")[1].split("ms")[0])  
 
-            # storage.get('loginToken')
-            if re.search("get('loginToken')", line):
-                device['timer_storage'] = int(line.split(":")[1].split("ms")[0])  
+                # storage.get('loginToken')
+                if re.search("get('loginToken')", line):
+                    device['timer_storage'] = int(line.split(":")[1].split("ms")[0])  
 
-            # loginService.login()->browser.on('loadstop')
-            if re.search("loginService.login()->browser.on('loadstop'):", line):
-                device['timer_loginservice'] = int(line.split(":")[1].split("ms")[0])  
-
-
+                # loginService.login()->browser.on('loadstop')
+                if re.search("loginService.login()->browser.on('loadstop'):", line):
+                    device['timer_loginservice'] = int(line.split(":")[1].split("ms")[0])  
+    
+                linenumber += 1
+    except Exception as e:
+        print(line)
+        print(e)
+    
     print(device)
     return device
 
