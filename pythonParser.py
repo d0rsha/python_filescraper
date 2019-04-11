@@ -91,7 +91,9 @@ def parse_line(line, device):
         
         # Fully Drawn 
         if re.search("Fully drawn", line):          
-            device['fully_drawn'] = timestamp_to_ms(line.split("Fully drawn")[1].split(":")[1])     
+            device['fully_drawn'] = timestamp_to_ms(line.split("Fully drawn")[1].split(":")[1])
+            device['fully_drawn2'] = line.split("Fully drawn")[1].split(":")[1]
+                 
 
     # Package installed 
     if re.search("I\/Pm\([0-9]+\)(.*)Package(.*)installed", line) and "android" not in line:          
