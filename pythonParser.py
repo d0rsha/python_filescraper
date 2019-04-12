@@ -15,7 +15,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("path")
 args = parser.parse_args()
 
-increment = 0
 global tests 
 tests= []
 
@@ -63,11 +62,9 @@ def search_filepath(root_path, match):
         for filename in files:
             # print(filename)
             if filename.lower() == match:
-                global increment
                 #global tests
                 dic = parse_file(os.path.join(root, filename))
                 tests.insert(1, dic)
-                increment += 1
     return 
 
 def parse_line(line, device):
@@ -81,13 +78,11 @@ def parse_line(line, device):
         if re.search("ActivityManager(.*)Displayed(.*)\.MainActivity", line):
             if "(total" not in line:
                 device['displayed'] = timestamp_to_ms(line.split("MainActivity: +")[1])
-                device['displayed2'] = line.split("MainActivity: +")[1]
+                device['displayed2'] = (line.split("MainActivity: +")[1])
             else:
                 device['displayed'] = timestamp_to_ms(line.split("MainActivity: +")[1].split("total")[0])
                 device['displayed2'] = (line.split("MainActivity: +")[1].split("total")[0])
-                
                 device['displayed_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])    
-                device['displayed_plus_total2'] = (line.split(".MainActivity:")[1].split("total")[1])    
             device['app_name']  = line.split("Displayed ")[1].split("/.MainActivity")[0]
         # Displayed BackdropActivity /!\ Must be else if of previous case 
         """ elif re.search("ActivityManager(.*)Displayed", line):
@@ -101,7 +96,6 @@ def parse_line(line, device):
         # Fully Drawn 
         if re.search("Fully drawn", line):          
             device['fully_drawn'] = timestamp_to_ms(line.split("Fully drawn")[1].split(":")[1])
-            device['fully_drawn2'] = line.split("Fully drawn")[1].split(":")[1]
                  
 
     # Package installed 
@@ -143,21 +137,21 @@ def parse_line(line, device):
         # checkBackendVersionIsActive
         if re.search("checkBackendVersionIsActive", line):
             if not 'timer_backend' in device:
-                device['timer_backend'] = line.split("checkBackendVersionIsActive:")[1].split("ms")[0]
+                device['timer_backend'] = int(line.split("checkBackendVersionIsActive:")[1].split("ms")[0])
                 device['timer_backend_count'] = 1
             else:
                 device['timer_backend_count'] += 1
         # storage.get('loginToken')
         if re.search("get\('loginToken'\)", line):
             if not 'timer_storage' in device:
-                device['timer_storage'] = line.split("storage.get('loginToken'):")[1].split("ms")[0]
+                device['timer_storage'] = int(line.split("storage.get('loginToken'):")[1].split("ms")[0])
                 device['timer_storage_count'] = 1
             else:
                 device['timer_storage_count'] += 1
         # loginService.login()->browser.on('loadstop')
         if re.search("loginService.login", line):
             if not 'timer_loginservice' in device:
-                device['timer_loginservice'] = line.split("->browser.on('loadstop'):")[1].split("ms")[0] 
+                device['timer_loginservice'] = int(line.split("->browser.on('loadstop'):")[1].split("ms")[0])
                 device['timer_loginservice_count'] = 1
             else:
                 device['timer_loginservice_count'] += 1
@@ -200,7 +194,6 @@ def parse_file(filepath):
 
 
 if __name__ == "__main__":
-    increment = 0
     search_filepath(args.path, 'logcat')
     #global tests
     print(tests)
@@ -209,28 +202,33 @@ if __name__ == "__main__":
             f.write("%s,%s\n"%(key,tests[key])) """
 
 
+
      # All exisisting keys in dict
-    csv_columns = ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova', ' source', 'model','deviceready','timer_ionic','displayed','displayed2','displayed_plus_total','displayed_plus_total2','fully_drawn','fully_drawn2','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count']
+    csv_columns = ['unique','app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova',              'model','deviceready','timer_ionic','displayed','displayed2',          'fully_drawn','install_time',                                'timer_backend',                        'timer_storage',                    'timer_loginservice']
+    #csv_columns = ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova', ' source', 'model','deviceready','timer_ionic','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count']
+    
     dict_data = tests
 
     with open('test.csv', 'w') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
         writer.writeheader()
+
+        unique_key = 0
         for data_row in dict_data:
 
             # The names of the fields you want to check
             fields = csv_columns
-            # The value you want to replace a blank with. In this case, a 0
-            marker = ''
+            # Create a new dict to remove unecciscary fields from data_row
+            insert = {}
 
-            
             # Check the values, within this row, for each of the fields listed 
             for field_name in fields:
                 try:
                     field_value = str(data_row[field_name]).strip()
-                except KeyError:
+                except KeyError: # Catch KeyError exception, thus field_value never undefined 
                     field_value = ''
-                data_row[field_name] = field_value
+                insert[field_name] = field_value
 
-
-            writer.writerow(data_row)
+            insert['unique'] = unique_key
+            unique_key += 1
+            writer.writerow(insert)
