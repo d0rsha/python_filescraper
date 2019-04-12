@@ -81,13 +81,13 @@ def parse_line(line, device):
         if re.search("ActivityManager(.*)Displayed(.*)\.MainActivity", line):
             if "(total" not in line:
                 device['displayed'] = timestamp_to_ms(line.split("MainActivity: +")[1])
-                device['displayed2'] = line.split("MainActivity: +")[1]
+                #device['displayed2'] = line.split("MainActivity: +")[1]
             else:
                 device['displayed'] = timestamp_to_ms(line.split("MainActivity: +")[1].split("total")[0])
-                device['displayed2'] = (line.split("MainActivity: +")[1].split("total")[0])
+                #device['displayed2'] = (line.split("MainActivity: +")[1].split("(total")[0])
                 
-                device['displayed_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])    
-                device['displayed_plus_total2'] = (line.split(".MainActivity:")[1].split("total")[1])    
+                #device['displayed_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])    
+                #device['displayed_plus_total2'] = (line.split(".MainActivity:")[1].split("(total")[1])    
             device['app_name']  = line.split("Displayed ")[1].split("/.MainActivity")[0]
         # Displayed BackdropActivity /!\ Must be else if of previous case 
         """ elif re.search("ActivityManager(.*)Displayed", line):
@@ -101,7 +101,7 @@ def parse_line(line, device):
         # Fully Drawn 
         if re.search("Fully drawn", line):          
             device['fully_drawn'] = timestamp_to_ms(line.split("Fully drawn")[1].split(":")[1])
-            device['fully_drawn2'] = line.split("Fully drawn")[1].split(":")[1]
+            #device['fully_drawn2'] = line.split("Fully drawn")[1].split(":")[1]
                  
 
     # Package installed 
@@ -210,7 +210,7 @@ if __name__ == "__main__":
 
 
      # All exisisting keys in dict
-    csv_columns = ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova', ' source', 'model','deviceready','timer_ionic','displayed','displayed2','displayed_plus_total','displayed_plus_total2','fully_drawn','fully_drawn2','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count']
+    csv_columns = ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova','model','deviceready','displayed','fully_drawn','install_time']
     dict_data = tests
 
     with open('test.csv', 'w') as csvfile:
@@ -222,7 +222,7 @@ if __name__ == "__main__":
             fields = csv_columns
             # The value you want to replace a blank with. In this case, a 0
             marker = ''
-
+            insert = {}
             
             # Check the values, within this row, for each of the fields listed 
             for field_name in fields:
@@ -230,7 +230,7 @@ if __name__ == "__main__":
                     field_value = str(data_row[field_name]).strip()
                 except KeyError:
                     field_value = ''
-                data_row[field_name] = field_value
+                insert[field_name] = field_value
 
-
-            writer.writerow(data_row)
+            if insert['app_name']:
+                writer.writerow(insert)
