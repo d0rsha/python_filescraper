@@ -96,7 +96,7 @@ def parse_line(line, device):
         # Fully Drawn 
         if re.search("Fully drawn", line):          
             device['fully_drawn'] = timestamp_to_ms(line.split("Fully drawn")[1].split(":")[1])
-            print(device['fully_drawn'])
+            #print(device['fully_drawn'])
 
     # Package installed 
     if re.search("I\/Pm\([0-9]+\)(.*)Package(.*)installed", line) and "android" not in line:          
@@ -204,8 +204,8 @@ if __name__ == "__main__":
 
 
      # All exisisting keys in dict
-    csv_columns = ['unique','app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova',              'model','deviceready', 'my_deviceready_timing','timer_ionic','displayed','displayed2',          'fully_drawn','install_time',                                'timer_backend',                        'timer_storage',                    'timer_loginservice']
-    #csv_columns = ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova', ' source', 'model','deviceready','timer_ionic','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count','cordova_timing']
+    csv_columns = ['unique','app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova',              'model','deviceready', 'my_deviceready_timing','displayed',         'fully_drawn','install_time',                                'timer_backend',                        'timer_storage',                    'timer_loginservice']
+    #csv_columns = ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova', ' source', 'model','deviceready','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count','cordova_timing']
     
     dict_data = tests
 
@@ -232,3 +232,5 @@ if __name__ == "__main__":
             insert['unique'] = unique_key
             unique_key += 1
             writer.writerow(insert)
+            if insert['app_name']:
+                writer.writerow(insert)
