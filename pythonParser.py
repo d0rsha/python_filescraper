@@ -68,20 +68,17 @@ def search_filepath(root_path, match):
     return 
 
 def parse_line(line, device):
-    # Regex applied to each line 
     
+    """
+        Android specific 
+    """
     if "ActivityManager" in line:
-        """
-            Android specific 
-        """
         ## Displayed
         if re.search("ActivityManager(.*)Displayed(.*)\.MainActivity", line):
             if "(total" not in line:
                 device['displayed'] = timestamp_to_ms(line.split("MainActivity: +")[1])
-                device['displayed2'] = (line.split("MainActivity: +")[1])
             else:
                 device['displayed'] = timestamp_to_ms(line.split("MainActivity: +")[1].split("total")[0])
-                device['displayed2'] = (line.split("MainActivity: +")[1].split("(total")[0])
                 device['displayed_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])    
             device['app_name']  = line.split("Displayed ")[1].split("/.MainActivity")[0]
         # Displayed BackdropActivity /!\ Must be else if of previous case 
@@ -96,11 +93,12 @@ def parse_line(line, device):
         # Fully Drawn 
         if re.search("Fully drawn", line):          
             device['fully_drawn'] = timestamp_to_ms(line.split("Fully drawn")[1].split(":")[1])
-            #print(device['fully_drawn'])
 
+    
     # Package installed 
-    if re.search("I\/Pm\([0-9]+\)(.*)Package(.*)installed", line) and "android" not in line:          
-        device['install_time'] = timestamp_to_ms(line.split("installed in")[1]) 
+    if "Package" in line:
+        if re.search("I\/Pm\([0-9]+\)(.*)Package(.*)installed", line) and "android" not in line:          
+            device['install_time'] = timestamp_to_ms(line.split("installed in")[1]) 
             
     if "Cordova" in line:
         """
@@ -108,13 +106,19 @@ def parse_line(line, device):
         """
         # CordovaWebView Started (A)
         if re.search("Apache Cordova native platform", line):
-            device['cordova_start'] = float(line.split(":")[2])             
+            device['cordova_start'] = float(line.split(":")[2])    
+            device['cordova_version'] = line.split('platform version')[1].split('is')[0].strip()
             
         # CordovaWebView Loaded (B): Calculate diff from started untill loaded == B - A 
         if re.search("CordovaWebView is running on device made by", line):
             device['cordova_loaded'] = float(line.split(":")[2])    
             device['my_deviceready_timing'] =  1000*(device['cordova_loaded'] - device['cordova_start'])
+            del device['cordova_loaded']
+            del device['cordova_start']
 
+    """
+        Specific Chrome console output 
+    """
     if "INFO:CONSOLE" in line:
         # Ionic Native: deviceready
         if re.search("Ionic Native: deviceready", line):
@@ -129,7 +133,24 @@ def parse_line(line, device):
             attributes = line.split('{')[1].split(',')
             # Add from current format=device: Device {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
             for item in attributes:
-                device[item.split(':')[0]] = item.split(':')[1]
+                device[item.split(':')[0].strip()] = item.split(':')[1]
+
+        # Cordova device Memory
+        if re.search("device: MemoryUsage", line):
+            attributes = line.split('{')[1].split(',')
+            # Add from current format=device: MemoryUsage {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
+            for item in attributes:
+                device[item.split(':')[0].strip()] = item.split(':')[1].split(".")[0].strip()
+        
+        # Cordova device Memory
+        if re.search("device: BrowserTiming", line):
+            attributes = line.split('{')[1].split(',')
+            # Add from current format=device: MemoryUsage {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
+            for item in attributes:
+                device[item.split(':')[0].strip()] = item.split(':')[1].split(".")[0].strip()
+
+
+
 
         """
             Specific to Boende Appen 
@@ -196,7 +217,9 @@ def parse_file(filepath):
 if __name__ == "__main__":
     search_filepath(args.path, 'logcat')
     #global tests
-    print(tests)
+    import pprint
+
+    pprint.pprint(tests)
     """ with open('test.csv', 'w') as f:
         for key in tests.keys():
             f.write("%s,%s\n"%(key,tests[key])) """
@@ -204,8 +227,8 @@ if __name__ == "__main__":
 
 
      # All exisisting keys in dict
-    csv_columns = ['unique','app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova',              'model','deviceready', 'my_deviceready_timing','displayed',         'fully_drawn','install_time',                                'timer_backend',                        'timer_storage',                    'timer_loginservice']
-    #csv_columns = ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova', ' source', 'model','deviceready','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count','cordova_timing']
+    csv_columns = ['unique','isVirtual', 'approach','app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova_version',              'model','deviceready', 'my_deviceready_timing','displayed',         'fully_drawn','install_time',]#                                'timer_backend',                        'timer_storage',                    'timer_loginservice']
+    #csv_columns = ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova_version', ' source', 'model','deviceready','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count','cordova_timing']
     
     dict_data = tests
 
