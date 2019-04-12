@@ -32,8 +32,8 @@ def timestamp_to_ms(stamp):
     units = re.split('[\d]+', stamp)
     integers = [x for x in integers if x and not x == ' ']
     units = [x for x in units if x and not x == ' ']
-    #print('[INFO:CONSOLE] line=', 'integers', integers)
-    #print('[INFO:CONSOLE] line=', 'units   ', units)
+    # print('[INFO:CONSOLE] line=', 'integers', integers)
+    # print('[INFO:CONSOLE] line=', 'units   ', units)
 
     if (len(integers) != len(units)):
         raise ValueError('# integers does not match # units')
@@ -42,9 +42,12 @@ def timestamp_to_ms(stamp):
         if units[index] == 'ms':
             time += int(integer)
         elif units[index] == 's':
-            time += int(integer) * 1000
+            time += (int(integer) * 1000) 
         elif units[index] == 'm':
-            time += int(integer) * 1000 * 1000
+            time += (int(integer) * 1000 * 60)
+        index += 1
+
+    # print('[INFO:CONSOLE] line=', 'time==', time)
     return time
 
 def search_filepath(root_path, match):
@@ -78,19 +81,23 @@ def parse_line(line, device):
         if re.search("ActivityManager(.*)Displayed(.*)\.MainActivity", line):
             if "(total" not in line:
                 device['displayed'] = timestamp_to_ms(line.split("MainActivity: +")[1])
+                device['displayed2'] = line.split("MainActivity: +")[1]
             else:
                 device['displayed'] = timestamp_to_ms(line.split("MainActivity: +")[1].split("total")[0])
+                device['displayed2'] = (line.split("MainActivity: +")[1].split("total")[0])
+                
                 device['displayed_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])    
+                device['displayed_plus_total2'] = (line.split(".MainActivity:")[1].split("total")[1])    
             device['app_name']  = line.split("Displayed ")[1].split("/.MainActivity")[0]
         # Displayed BackdropActivity /!\ Must be else if of previous case 
-        elif re.search("ActivityManager(.*)Displayed", line):
+        """ elif re.search("ActivityManager(.*)Displayed", line):
             activity = line.split(".")[-1].split(":")[0]
             if "(total" not in line:
                 device[activity] = timestamp_to_ms(line.split(".")[-1].split(":")[1])
             else:
                 device[activity] = timestamp_to_ms(line.split(".")[-1].split(":")[1].split("total")[0])
                 device[activity+'_plus_total'] = timestamp_to_ms(line.split(".")[-1].split(":")[1].split("total")[1])
-        
+         """
         # Fully Drawn 
         if re.search("Fully drawn", line):          
             device['fully_drawn'] = timestamp_to_ms(line.split("Fully drawn")[1].split(":")[1])
@@ -203,7 +210,7 @@ if __name__ == "__main__":
 
 
      # All exisisting keys in dict
-    csv_columns = ['app_name', 'serial', 'manufacturer', 'BackdropActivity', 'platform', 'version', 'cordova', ' source', 'DialtactsActivity', 'model','deviceready','timer_ionic','displayed','displayed_plus_total','fully_drawn','fully_drawn2','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count']
+    csv_columns = ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova', ' source', 'model','deviceready','timer_ionic','displayed','displayed2','displayed_plus_total','displayed_plus_total2','fully_drawn','fully_drawn2','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count']
     dict_data = tests
 
     with open('test.csv', 'w') as csvfile:
@@ -223,7 +230,7 @@ if __name__ == "__main__":
                     field_value = str(data_row[field_name]).strip()
                 except KeyError:
                     field_value = ''
-                data_row[field_name] = field_value or marker
+                data_row[field_name] = field_value
 
 
             writer.writerow(data_row)
