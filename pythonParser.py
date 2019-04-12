@@ -5,7 +5,7 @@ import re
 import argparse
 import logging
 import traceback
-
+import csv
 
 """
 Arguments to program
@@ -16,7 +16,8 @@ parser.add_argument("path")
 args = parser.parse_args()
 
 increment = 0
-tests = dict()
+global tests 
+tests= []
 
 def timestamp_to_ms(stamp):
     """
@@ -60,7 +61,9 @@ def search_filepath(root_path, match):
             # print(filename)
             if filename.lower() == match:
                 global increment
-                tests[increment] = parse_file(os.path.join(root, filename))
+                #global tests
+                dic = parse_file(os.path.join(root, filename))
+                tests.insert(1, dic)
                 increment += 1
     return 
 
@@ -79,7 +82,6 @@ def parse_line(line, device):
                 device['displayed'] = timestamp_to_ms(line.split("MainActivity: +")[1].split("total")[0])
                 device['displayed_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])    
             device['app_name']  = line.split("Displayed ")[1].split("/.MainActivity")[0]
-
         # Displayed BackdropActivity /!\ Must be else if of previous case 
         elif re.search("ActivityManager(.*)Displayed", line):
             activity = line.split(".")[-1].split(":")[0]
@@ -165,7 +167,7 @@ def parse_file(filepath):
     """
     linenumber = 0
     device = dict()
-    print('Search in ', filepath)
+    #print('Search in ', filepath)
     # Python uses a lookahead buffer internally thus faster reading line by line 
     
     # do stuff here
@@ -186,10 +188,42 @@ def parse_file(filepath):
         print(e)
         traceback.print_exc()
     
-    print(device)
+    #print(device)
     return device
 
 
 if __name__ == "__main__":
     increment = 0
     search_filepath(args.path, 'logcat')
+    #global tests
+    print(tests)
+    """ with open('test.csv', 'w') as f:
+        for key in tests.keys():
+            f.write("%s,%s\n"%(key,tests[key])) """
+
+
+     # All exisisting keys in dict
+    csv_columns = ['app_name', 'serial', 'manufacturer', 'BackdropActivity', 'platform', 'version', 'cordova', ' source', 'DialtactsActivity', 'model','deviceready','timer_ionic','displayed','displayed_plus_total','fully_drawn','fully_drawn2','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count']
+    dict_data = tests
+
+    with open('test.csv', 'w') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
+        writer.writeheader()
+        for data_row in dict_data:
+
+            # The names of the fields you want to check
+            fields = csv_columns
+            # The value you want to replace a blank with. In this case, a 0
+            marker = ''
+
+            
+            # Check the values, within this row, for each of the fields listed 
+            for field_name in fields:
+                try:
+                    field_value = str(data_row[field_name]).strip()
+                except KeyError:
+                    field_value = ''
+                data_row[field_name] = field_value or marker
+
+
+            writer.writerow(data_row)
