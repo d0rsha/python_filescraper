@@ -94,6 +94,16 @@ def parse_line(line, device):
         if re.search("Fully drawn", line):          
             device['fully_drawn'] = timestamp_to_ms(line.split("Fully drawn")[1].split(":")[1])
 
+    """
+        Device 
+    """
+    if "device" in line:
+        if re.search("device: Device", line):
+            attributes = line.split('{')[1].split(',')
+            # Add from current format=device: Device {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
+            for item in attributes:
+                device[item.split(':')[0].strip()] = item.split(':')[1]
+
     
     # Package installed 
     if "Package" in line:
@@ -127,13 +137,6 @@ def parse_line(line, device):
         # Ionic Loaded 
         if re.search("ionic loaded:", line):
             device['timer_ionic'] = line.split(":")[1].split("ms")[0].split('.')[0]     
-            
-        # Cordova device 
-        if re.search("device: Device", line):
-            attributes = line.split('{')[1].split(',')
-            # Add from current format=device: Device {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
-            for item in attributes:
-                device[item.split(':')[0].strip()] = item.split(':')[1]
 
         # Cordova device Memory
         if re.search("device: MemoryUsage", line):
