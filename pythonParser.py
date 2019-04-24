@@ -18,6 +18,12 @@ args = parser.parse_args()
 global tests 
 tests= []
 
+def clean(dirty_string):
+    """
+        Clean string from wierd signs & chars given by regEx
+    """
+    return re.sub('[+()\n\" ]', '', dirty_string)
+
 def timestamp_to_ms(stamp):
     """
     Convert a timestamp on the following format: XXhXXmXXsXXXms to ms 
@@ -28,7 +34,7 @@ def timestamp_to_ms(stamp):
     returns 
         time in milliseconds (ms)
     """
-    stamp = re.sub('[+()\n total]', '', stamp)
+    stamp = re.sub('[+()\n\" total]', '', stamp)
     time = 0
     integers = re.split('[h,m,s,ms\n,ms,]', stamp)
     units = re.split('[\d]+', stamp)
@@ -106,9 +112,8 @@ def parse_line(line, device):
             # Add from current format=device: Device {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
             for item in attributes:
                 
-                if item.strip():
-                    print(item)
-                    device[item.split(':')[0].strip()] = item.split(':')[1]
+                if clean(item):
+                    device[ clean(item.split(':')[0]) ] = item.split(':')[1]
 
     
     # Package installed 
@@ -123,7 +128,7 @@ def parse_line(line, device):
         # CordovaWebView Started (A)
         if re.search("Apache Cordova native platform", line):
             device['cordova_start'] = float(line.split(":")[2])    
-            device['cordova_version'] = line.split('platform version')[1].split('is')[0].strip()
+            device['cordova_version'] = clean( line.split('platform version')[1].split('is')[0] )
             
         # CordovaWebView Loaded (B): Calculate diff from started untill loaded == B - A 
         if re.search("CordovaWebView is running on device made by", line):
@@ -149,14 +154,14 @@ def parse_line(line, device):
             attributes = line.split('{')[1].split(',')
             # Add from current format=device: MemoryUsage {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
             for item in attributes:
-                device[item.split(':')[0].strip()] = item.split(':')[1].split(".")[0].strip()
+                device[ clean( item.split(':')[0] ) ] = clean( item.split(':')[1].split(".")[0] )
         
         # Cordova device Memory
         if re.search("device: BrowserTiming", line):
             attributes = line.split('{')[1].split(',')
             # Add from current format=device: MemoryUsage {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
             for item in attributes:
-                device[item.split(':')[0].strip()] = item.split(':')[1].split(".")[0].strip()
+                device[ clean( item.split(':')[0] ) ] = clean( item.split(':')[1].split(".")[0] )
 
 
 
@@ -229,6 +234,7 @@ if __name__ == "__main__":
     import pprint
 
     pprint.pprint(tests)
+    print("---------------")
     """ with open('test.csv', 'w') as f:
         for key in tests.keys():
             f.write("%s,%s\n"%(key,tests[key])) """
@@ -236,7 +242,10 @@ if __name__ == "__main__":
 
 
      # All exisisting keys in dict
-    csv_columns = ['unique','isVirtual', 'approach','app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova_version',              'model','deviceready', 'my_deviceready_timing','displayed',         'fully_drawn','install_time',]#                                'timer_backend',                        'timer_storage',                    'timer_loginservice']
+    csv_columns = ['unique','isVirtual', 'approach','app_name', 'serial','uuid', 
+                    'model',   'manufacturer', 'platform', 
+                    'version', 'sdk-version',  'cordova_version', 
+                    'displayed','fully_drawn','deviceready', 'install_time','my_deviceready_timing']#                                'timer_backend',                        'timer_storage',                    'timer_loginservice']
     #csv_columns = ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova_version', ' source', 'model','deviceready','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count','cordova_timing']
     
     dict_data = tests
@@ -250,10 +259,14 @@ if __name__ == "__main__":
 
             # Remove undefined tests 
             try:
-                data_row['serial']
-            except KeyError:
+                if not clean( str(data_row['serial']) ) \
+                or not clean( str(data_row['app_name']) )\
+                or not clean( str(data_row['displayed']) ):
+                    raise KeyError('undefined')
+                
+            except (KeyError) as e:
                 print("remove row", data_row)
-                break
+                continue
             
 
             # The names of the fields you want to check
@@ -264,7 +277,7 @@ if __name__ == "__main__":
             # Check the values, within this row, for each of the fields listed 
             for field_name in fields:
                 try:
-                    field_value = str(data_row[field_name]).strip()
+                    field_value = clean( str(data_row[field_name]) )
                 except KeyError: # Catch KeyError exception, thus field_value never undefined 
                     field_value = ''
                 insert[field_name] = field_value
@@ -272,5 +285,3 @@ if __name__ == "__main__":
             insert['unique'] = unique_key
             unique_key += 1
             writer.writerow(insert)
-            if insert['app_name']:
-                writer.writerow(insert)
