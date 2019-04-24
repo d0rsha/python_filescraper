@@ -24,6 +24,9 @@ def timestamp_to_ms(stamp):
 
     ----------
     @param stamp : str              - Timestamp on format [XX]h[XX]m[XX]s[XXX]ms
+    ----------
+    returns 
+        time in milliseconds (ms)
     """
     stamp = re.sub('[+()\n total]', '', stamp)
     time = 0
@@ -102,7 +105,10 @@ def parse_line(line, device):
             attributes = line.split('{')[1].split(',')
             # Add from current format=device: Device {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
             for item in attributes:
-                device[item.split(':')[0].strip()] = item.split(':')[1]
+                
+                if item.strip():
+                    print(item)
+                    device[item.split(':')[0].strip()] = item.split(':')[1]
 
     
     # Package installed 
@@ -241,6 +247,14 @@ if __name__ == "__main__":
 
         unique_key = 0
         for data_row in dict_data:
+
+            # Remove undefined tests 
+            try:
+                data_row['serial']
+            except KeyError:
+                print("remove row", data_row)
+                break
+            
 
             # The names of the fields you want to check
             fields = csv_columns
