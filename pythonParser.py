@@ -133,7 +133,7 @@ def parse_line(line, device):
         # CordovaWebView Loaded (B): Calculate diff from started untill loaded == B - A 
         if re.search("CordovaWebView is running on device made by", line):
             device['cordova_loaded'] = float(line.split(":")[2])    
-            device['my_deviceready_timing'] =  1000*(device['cordova_loaded'] - device['cordova_start'])
+            device['my_deviceready_timing'] =  int( 1000*(device['cordova_loaded'] - device['cordova_start']) )
             del device['cordova_loaded']
             del device['cordova_start']
 
@@ -227,25 +227,26 @@ def parse_file(filepath):
     #print(device)
     return device
 
+"""
+    Main program
 
+    calls search_filepath, result added to global variable 'tests'
+    creates csv file with headers according to csv_columns 
+"""
 if __name__ == "__main__":
     search_filepath(args.path, 'logcat')
-    #global tests
-    import pprint
 
+    import pprint
     pprint.pprint(tests)
     print("---------------")
-    """ with open('test.csv', 'w') as f:
-        for key in tests.keys():
-            f.write("%s,%s\n"%(key,tests[key])) """
-
-
 
      # All exisisting keys in dict
     csv_columns = ['unique','isVirtual', 'approach','app_name', 'serial','uuid', 
                     'model',   'manufacturer', 'platform', 
-                    'version', 'sdk-version',  'cordova_version', 
-                    'displayed','fully_drawn','deviceready', 'install_time','my_deviceready_timing']#                                'timer_backend',                        'timer_storage',                    'timer_loginservice']
+                    'version', 'sdk-version',  'cordova', 
+                    'displayed' , 'deviceready', 'fully_drawn', 
+                    '1displayed','2deviceready','3fully_drawn',
+                    'install_time'] 
     #csv_columns = ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova_version', ' source', 'model','deviceready','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count','cordova_timing']
     
     dict_data = tests
@@ -263,6 +264,31 @@ if __name__ == "__main__":
                 or not clean( str(data_row['app_name']) )\
                 or not clean( str(data_row['displayed']) ):
                     raise KeyError('undefined')
+
+
+                # Renaming
+                data_row['app_name'] = re.sub('com.avrethem.', '', data_row['app_name'])
+                data_row['app_name'] = re.sub('com.ionicframework.', '', data_row['app_name'])
+                data_row['app_name'] = re.sub('android.', 'droid', data_row['app_name'])
+                data_row['app_name'] = re.sub('app', '', data_row['app_name'])
+                data_row['app_name'] = re.sub('se.solutionxperts.', '', data_row['app_name'])
+                data_row['app_name'] = re.sub('.stangastaden', '', data_row['app_name'])
+                
+                if 'cordova_version' in data_row:
+                    data_row['cordova'] = data_row['cordova_version']
+
+                
+                # Sort Values by deltider 
+                # deviceready is total time until device is ready from start 
+                # 2deviceready is time it took for framework to load 
+                if 'displayed' in data_row:
+                    data_row['1displayed'] = data_row['displayed']
+                    if 'deviceready' in data_row:
+                        data_row['2deviceready'] = data_row['deviceready']
+                        data_row['deviceready'] = int(data_row['displayed']) + int(data_row['deviceready'])
+                if 'fully_drawn' in data_row:
+                    data_row['3fully_drawn'] = data_row['fully_drawn'] - data_row['deviceready']
+                
                 
             except (KeyError) as e:
                 print("remove row", data_row)
