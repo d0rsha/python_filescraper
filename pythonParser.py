@@ -91,14 +91,15 @@ def parse_line(line, device):
                 device['displayed_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])    
             device['app_name']  = line.split("Displayed ")[1].split("/.MainActivity")[0]
         # Displayed BackdropActivity /!\ Must be else if of previous case 
-        """ elif re.search("ActivityManager(.*)Displayed", line):
-            activity = line.split(".")[-1].split(":")[0]
-            if "(total" not in line:
-                device[activity] = timestamp_to_ms(line.split(".")[-1].split(":")[1])
-            else:
-                device[activity] = timestamp_to_ms(line.split(".")[-1].split(":")[1].split("total")[0])
-                device[activity+'_plus_total'] = timestamp_to_ms(line.split(".")[-1].split(":")[1].split("total")[1])
-         """
+        elif re.search("ActivityManager(.*)Displayed(.*)\.BackdropActivity", line):
+            #activity = line.split(".")[-1].split(":")[0]
+            if 'app_name' in device:
+                if device['app_name'] in line:
+                    if "(total" not in line:
+                        device['backdrop_displayed'] = timestamp_to_ms(line.split("BackdropActivity: +")[1])
+                    else:
+                        device['backdrop_displayed'] = timestamp_to_ms(line.split("BackdropActivity: +")[1].split("total")[0])
+        
         # Fully Drawn 
         if re.search("Fully drawn", line):          
             device['fully_drawn'] = timestamp_to_ms(line.split("Fully drawn")[1].split(":")[1])
@@ -246,7 +247,7 @@ if __name__ == "__main__":
                     'version', 'sdk-version',  'cordova', 
                     'displayed' , 'deviceready', 'fully_drawn', 
                     '1displayed','2deviceready','3fully_drawn',
-                    'install_time'] 
+                    'install_time', 'backdrop_displayed'] 
     #csv_columns = ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova_version', ' source', 'model','deviceready','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count','cordova_timing']
     
     dict_data = tests
@@ -289,7 +290,43 @@ if __name__ == "__main__":
                 if 'fully_drawn' in data_row:
                     data_row['3fully_drawn'] = data_row['fully_drawn'] - data_row['deviceready']
                 
-                
+                """
+                    Add API-level for Android-rows that are mssing sdk-version
+                """
+                if not 'sdk-version' in data_row:
+                    if '4.3' in data_row['version']:
+                        data_row['sdk-version'] = '18'
+                    elif '4.4' in data_row['version']:
+                        data_row['sdk-version'] = '19'
+                    elif '5.0' in data_row['version']:
+                        data_row['sdk-version'] = '21'
+                    elif '5.1' in data_row['version']:
+                        data_row['sdk-version'] = '22'
+                    elif '6.' in data_row['version']:
+                        data_row['sdk-version'] = '23'
+                    elif '7.1' in data_row['version']:
+                        data_row['sdk-version'] = '25'
+                    elif '7' in data_row['version']:
+                        data_row['sdk-version'] = '24'
+                    elif '8.1' in data_row['version']:
+                        data_row['sdk-version'] = '27'
+                    elif '8' in data_row['version']:
+                        data_row['sdk-version'] = '26'
+                    elif '9' in data_row['version']:
+                        data_row['sdk-version'] = '28'
+                    else:
+                        data_row['sdk-version'] = 'null'
+
+                """
+                    Add approach to old tests that are missing those outputs to log
+                """
+                if not 'approach' in data_row:
+                    if 'cordova' in data_row:
+                        data_row['approach'] = 'hybrid'
+                    else:
+                        data_row['approach'] = 'native'
+
+
             except (KeyError) as e:
                 print("remove row", data_row)
                 continue
