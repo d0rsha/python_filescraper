@@ -1,0 +1,4 @@
+#!/bin/bash
+
+gsutil -m cp -r gs://test-lab-vs5fwd255p258-y231pa7vdj4mx .
+python pythonParser.py test-lab-vs5fwd255p258-y231pa7vdj4mx
