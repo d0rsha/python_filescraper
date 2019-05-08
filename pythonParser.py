@@ -82,7 +82,7 @@ def parse_line(line, device):
     """
         Android specific 
     """
-    if "ActivityManager" in line:
+    if "vityMana" in line:
         ## Displayed
         if re.search("ActivityManager(.*)Displayed(.*)\.MainActivity", line):
             if "(total" not in line:
@@ -108,7 +108,7 @@ def parse_line(line, device):
     """
         Device 
     """
-    if "device" in line:
+    if "device:" in line:
         if re.search("device: Device", line):
             attributes = line.split('{')[1].split(',')
             # Add from current format=device: Device {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
@@ -141,7 +141,7 @@ def parse_line(line, device):
     """
         Specific Chrome console output 
     """
-    if "INFO:CONSOLE" in line:
+    if "INFO:" in line:
         # Ionic Native: deviceready
         if re.search("Ionic Native: deviceready event fired after", line):
             device['deviceready'] = line.split("deviceready event fired after")[1].split("ms")[0]       
@@ -248,9 +248,9 @@ if __name__ == "__main__":
                     'model',   'manufacturer', 'platform',
                     'version', 'sdk-version',  'cordova', 
                     'displayed' , 'deviceready', 'fully_drawn', 
-                    '1displayed','2deviceready','3fully_drawn', 'total_time',
+                    '1displayed','2deviceready','3fully_drawn',
                     'install_time', 'backdrop_displayed', 'deviceready_error',
-                    'version', 'sdk-version'] 
+                    'version', 'sdk-version', 'total_time'] 
     # All exisisting keys in dict =
     # ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova_version', ' source', 'model','deviceready','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count','cordova_timing']
     
@@ -402,10 +402,11 @@ if __name__ == "__main__":
             unique_key += 1
             writer.writerow(csv_dict)
 
-    print("A total of " + str(row_errors) + " removed" )
+    print(str(row_errors) + " rows removed of " + str(unique_key + row_errors) + " in total" )
     print('____________________________')
     print('_________ COUNT ____________')
     print('__# accepted rows per app___')
     print('____________________________')
     pprint.pprint(count)
+    print('              of total : ' + str(unique_key))
     print('----------------------------')
