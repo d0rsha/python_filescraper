@@ -245,14 +245,23 @@ if __name__ == "__main__":
 
     # Headers to create in CSV file 
     csv_columns = ['unique','isVirtual', 'approach','app_name', 'serial','uuid', 
-                    'model',   'manufacturer', 'platform', 
+                    'model',   'manufacturer', 'platform',
                     'version', 'sdk-version',  'cordova', 
                     'displayed' , 'deviceready', 'fully_drawn', 
                     '1displayed','2deviceready','3fully_drawn',
-                    'install_time', 'backdrop_displayed', 'deviceready_error'] 
+                    'install_time', 'backdrop_displayed', 'deviceready_error',
+                    'version', 'sdk-version', 
+                    '1displayed','2deviceready','3fully_drawn', 'total_time'] 
     # All exisisting keys in dict =
     # ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova_version', ' source', 'model','deviceready','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count','cordova_timing']
     
+    tmp = "Parse error, removing row: "
+    for field_name in csv_columns:
+        COL_SIZE = int(len(field_name))
+        tmp += str(clean( str(field_name[-COL_SIZE:]) )).ljust(COL_SIZE) + ", "
+    print(tmp)
+
+
     dict_data = tests
 
     with open('test.csv', 'w') as csvfile:
@@ -341,14 +350,21 @@ if __name__ == "__main__":
 
                 # 
                 #   Count 
-                #
+                # 
                 if data_row['app_name'] in count:
                     count[data_row['app_name']] += 1
                 else:  
                     count[data_row['app_name']] = 1
 
             except (KeyError) as e:
-                print("Parse error, removing row: ", data_row)
+                tmp = "Parse error, removing row: "
+                for field_name in csv_columns:
+                    try:
+                        COL_SIZE = int(len(field_name))
+                        tmp += str(clean( str(data_row[field_name][-COL_SIZE:]) )).ljust(COL_SIZE) + ", "
+                    except (KeyError, IndexError, TypeError) as e: # KeyError when field_name does not exists 
+                        tmp += "''".ljust(COL_SIZE) + ", "
+                print(tmp)
                 continue
             
 
@@ -357,13 +373,27 @@ if __name__ == "__main__":
             #
             csv_dict = {}
 
+            total_time = 0
             for field_name in csv_columns:
                 try:
                     field_value = clean( str(data_row[field_name]) )
+
+                    """ 
+                    >>>> TMP >>>>> 
+                    """
+                    if '1displayed' in field_name or '2deviceready' in field_name or '3fully_drawn' in field_name:
+                        total_time += int(data_row[field_name])
+                    """
+                    <<<< TMP <<<<< 
+                    """
+
                 except KeyError: # KeyError when field_name does not exists 
                     field_value = ''
                 csv_dict[field_name] = field_value
 
+            """ >>>> TMP >>>> <<<<< TMP <<<<< """
+            csv_dict['total_time'] = total_time
+            """ >>>> TMP >>>> <<<<< TMP <<<<< """
             csv_dict['unique'] = unique_key
             unique_key += 1
             writer.writerow(csv_dict)
@@ -371,6 +401,7 @@ if __name__ == "__main__":
 
     print('____________________________')
     print('_________ COUNT ____________')
+    print('__# accepted rows per app___')
     print('____________________________')
     pprint.pprint(count)
     print('----------------------------')
