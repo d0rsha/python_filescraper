@@ -248,10 +248,9 @@ if __name__ == "__main__":
                     'model',   'manufacturer', 'platform',
                     'version', 'sdk-version',  'cordova', 
                     'displayed' , 'deviceready', 'fully_drawn', 
-                    '1displayed','2deviceready','3fully_drawn',
+                    '1displayed','2deviceready','3fully_drawn', 'total_time',
                     'install_time', 'backdrop_displayed', 'deviceready_error',
-                    'version', 'sdk-version', 
-                    '1displayed','2deviceready','3fully_drawn', 'total_time'] 
+                    'version', 'sdk-version'] 
     # All exisisting keys in dict =
     # ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova_version', ' source', 'model','deviceready','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count','cordova_timing']
     
@@ -269,6 +268,7 @@ if __name__ == "__main__":
         writer.writeheader()
 
         unique_key = 0
+        row_errors = 0
         for data_row in dict_data:
 
             try:
@@ -296,6 +296,9 @@ if __name__ == "__main__":
                 data_row['app_name'] = re.sub('app', '', data_row['app_name'])
                 data_row['app_name'] = re.sub('se.solutionxperts.', '', data_row['app_name'])
                 data_row['app_name'] = re.sub('.stangastaden', '', data_row['app_name'])
+                data_row['app_name'] = re.sub('xom.xwalk.browser', 'plugins.xwalk', data_row['app_name'])
+                
+                
                 
                 if 'cordova_version' in data_row:
                     data_row['cordova'] = data_row['cordova_version']
@@ -351,13 +354,14 @@ if __name__ == "__main__":
                 # 
                 #   Count 
                 # 
-                if data_row['app_name'] in count:
-                    count[data_row['app_name']] += 1
+                if data_row['app_name'].ljust(20) in count:
+                    count[data_row['app_name'].ljust(20)] += 1
                 else:  
-                    count[data_row['app_name']] = 1
+                    count[data_row['app_name'].ljust(20)] = 1
 
             except (KeyError) as e:
-                tmp = "Parse error, removing row: "
+                tmp = "Parse error, removing row" + str(row_errors).rjust(3) + ": "
+                row_errors += 1
                 for field_name in csv_columns:
                     try:
                         COL_SIZE = int(len(field_name))
@@ -381,7 +385,7 @@ if __name__ == "__main__":
                     """ 
                     >>>> TMP >>>>> 
                     """
-                    if '1displayed' in field_name or '2deviceready' in field_name or '3fully_drawn' in field_name:
+                    if '1displayed' == field_name or '2deviceready' == field_name or '3fully_drawn' == field_name:
                         total_time += int(data_row[field_name])
                     """
                     <<<< TMP <<<<< 
@@ -398,7 +402,7 @@ if __name__ == "__main__":
             unique_key += 1
             writer.writerow(csv_dict)
 
-
+    print("A total of " + str(row_errors) + " removed" )
     print('____________________________')
     print('_________ COUNT ____________')
     print('__# accepted rows per app___')
