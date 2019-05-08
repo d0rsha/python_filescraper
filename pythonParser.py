@@ -7,16 +7,17 @@ import logging
 import traceback
 import csv
 
-"""
-Arguments to program
-"""
-
+#
+#   Arguments and global variable 
+#
 parser = argparse.ArgumentParser()
 parser.add_argument("path")
 args = parser.parse_args()
 
 global tests 
 tests= []
+global count 
+count = {}
 
 def clean(dirty_string):
     """
@@ -112,8 +113,7 @@ def parse_line(line, device):
             attributes = line.split('{')[1].split(',')
             # Add from current format=device: Device {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
             for item in attributes:
-                
-                if clean(item):
+                if clean(item) and item.split(':'):
                     device[ clean(item.split(':')[0]) ] = item.split(':')[1]
 
     
@@ -143,9 +143,13 @@ def parse_line(line, device):
     """
     if "INFO:CONSOLE" in line:
         # Ionic Native: deviceready
-        if re.search("Ionic Native: deviceready", line):
+        if re.search("Ionic Native: deviceready event fired after", line):
             device['deviceready'] = line.split("deviceready event fired after")[1].split("ms")[0]       
-            
+        
+        # Ionic Native: Problem 
+        if re.search("Ionic Native: deviceready did not fire within", line):
+            device['deviceready_error'] = "true"       
+
         # Ionic Loaded 
         if re.search("ionic loaded:", line):
             device['timer_ionic'] = line.split(":")[1].split("ms")[0].split('.')[0]     
@@ -163,8 +167,6 @@ def parse_line(line, device):
             # Add from current format=device: MemoryUsage {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
             for item in attributes:
                 device[ clean( item.split(':')[0] ) ] = clean( item.split(':')[1].split(".")[0] )
-
-
 
 
         """
@@ -195,7 +197,7 @@ def parse_line(line, device):
 
 def parse_file(filepath):
     """
-    Parse file at filepath
+    Parse file at filepath, line by line 
 
     ----------
     @param filepath : str  
@@ -204,27 +206,27 @@ def parse_file(filepath):
     """
     linenumber = 0
     device = dict()
-    #print('Search in ', filepath)
-    # Python uses a lookahead buffer internally thus faster reading line by line 
     
-    # do stuff here
+    bufsize = 65536
     try:
-
-        bufsize = 65536
         with open(filepath, 'r') as file: 
             while True:
-                lines = file.readlines(bufsize)
-                if not lines:
-                    break
-                for line in lines:
-                    device = parse_line(line, device)
-                    linenumber += 1
-
+                    lines = file.readlines(bufsize)
+                    if not lines:
+                        break
+                    for line in lines:
+                        try:
+                            device = parse_line(line, device)
+                            linenumber += 1
+                        except Exception as e:
+                            print("_________/!\\ Line Error /!\\_________")
+                            print(line)
+                            print(e)
+                            traceback.print_exc()
     except Exception as e:
-        print(line)
+        print('_________/!\\ Probbly error Opening file /!\\_________')
         print(e)
         traceback.print_exc()
-    
     #print(device)
     return device
 
@@ -238,17 +240,18 @@ if __name__ == "__main__":
     search_filepath(args.path, 'logcat')
 
     import pprint
-    pprint.pprint(tests)
+    # pprint.pprint(tests)
     print("---------------")
 
-     # All exisisting keys in dict
+    # Headers to create in CSV file 
     csv_columns = ['unique','isVirtual', 'approach','app_name', 'serial','uuid', 
                     'model',   'manufacturer', 'platform', 
                     'version', 'sdk-version',  'cordova', 
                     'displayed' , 'deviceready', 'fully_drawn', 
                     '1displayed','2deviceready','3fully_drawn',
-                    'install_time', 'backdrop_displayed'] 
-    #csv_columns = ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova_version', ' source', 'model','deviceready','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count','cordova_timing']
+                    'install_time', 'backdrop_displayed', 'deviceready_error'] 
+    # All exisisting keys in dict =
+    # ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova_version', ' source', 'model','deviceready','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count','cordova_timing']
     
     dict_data = tests
 
@@ -259,15 +262,25 @@ if __name__ == "__main__":
         unique_key = 0
         for data_row in dict_data:
 
-            # Remove undefined tests 
             try:
+                #
+                #    Remove broken tests
+                #
                 if not clean( str(data_row['serial']) ) \
                 or not clean( str(data_row['app_name']) )\
                 or not clean( str(data_row['displayed']) ):
                     raise KeyError('undefined')
 
+                #
+                #   Remove test with missing 'Fully Drawn' attribute but not for android 
+                #
+                if "android" not in data_row["app_name"]:
+                    if 'fully_drawn' not in data_row:
+                        continue # Skip if app is not android and do not contain fully_drawn
 
-                # Renaming
+                #
+                #    Rename / Give app nickname
+                #
                 data_row['app_name'] = re.sub('com.avrethem.', '', data_row['app_name'])
                 data_row['app_name'] = re.sub('com.ionicframework.', '', data_row['app_name'])
                 data_row['app_name'] = re.sub('android.', 'droid', data_row['app_name'])
@@ -290,9 +303,9 @@ if __name__ == "__main__":
                 if 'fully_drawn' in data_row:
                     data_row['3fully_drawn'] = data_row['fully_drawn'] - data_row['deviceready']
                 
-                """
-                    Add API-level for Android-rows that are mssing sdk-version
-                """
+                #
+                #    Interpolate with 99 % confidence: Add API-level for Android-rows that are mssing sdk-version
+                #
                 if not 'sdk-version' in data_row:
                     if '4.3' in data_row['version']:
                         data_row['sdk-version'] = '18'
@@ -317,34 +330,47 @@ if __name__ == "__main__":
                     else:
                         data_row['sdk-version'] = 'null'
 
-                """
-                    Add approach to old tests that are missing those outputs to log
-                """
+                #
+                #    Interpolate with 100% confidence: Add approach to old tests that are missing those outputs to log
+                #
                 if not 'approach' in data_row:
                     if 'cordova' in data_row:
                         data_row['approach'] = 'hybrid'
                     else:
                         data_row['approach'] = 'native'
 
+                # 
+                #   Count 
+                #
+                if data_row['app_name'] in count:
+                    count[data_row['app_name']] += 1
+                else:  
+                    count[data_row['app_name']] = 1
 
             except (KeyError) as e:
-                print("remove row", data_row)
+                print("Parse error, removing row: ", data_row)
                 continue
             
 
-            # The names of the fields you want to check
-            fields = csv_columns
-            # Create a new dict to remove unecciscary fields from data_row
-            insert = {}
+            #
+            # Create a new Dict with the columns from csv_columns and create csv file from new Dict
+            #
+            csv_dict = {}
 
-            # Check the values, within this row, for each of the fields listed 
-            for field_name in fields:
+            for field_name in csv_columns:
                 try:
                     field_value = clean( str(data_row[field_name]) )
-                except KeyError: # Catch KeyError exception, thus field_value never undefined 
+                except KeyError: # KeyError when field_name does not exists 
                     field_value = ''
-                insert[field_name] = field_value
+                csv_dict[field_name] = field_value
 
-            insert['unique'] = unique_key
+            csv_dict['unique'] = unique_key
             unique_key += 1
-            writer.writerow(insert)
+            writer.writerow(csv_dict)
+
+
+    print('____________________________')
+    print('_________ COUNT ____________')
+    print('____________________________')
+    pprint.pprint(count)
+    print('----------------------------')

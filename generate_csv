@@ -1,4 +1,16 @@
 #!/bin/bash
+#
+#   Requires on 
+#   mac: brew install mutt
+#   linux sudo apt install mutt
+#
+#       mutt setup: ~/.muttrc
 
-gsutil -m cp -r gs://test-lab-vs5fwd255p258-y231pa7vdj4mx .
+
+gsutil -m cp -r -n gs://test-lab-vs5fwd255p258-y231pa7vdj4mx .
 python pythonParser.py test-lab-vs5fwd255p258-y231pa7vdj4mx
+echo "Sending csv-file to andvre@solutionxperts.se" | mutt -s "Updated csv file" -a test.csv -- andvre@solutionxperts.se
+
+
+# mailx not working 
+#echo 'mail content' | mailx -s 'email subject' -a test.csv andvre@solutionxperts.se
