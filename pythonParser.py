@@ -18,6 +18,8 @@ global tests
 tests= []
 global count 
 count = {}
+global fail_count
+fail_count = {}
 
 def clean(dirty_string):
     """
@@ -369,6 +371,12 @@ if __name__ == "__main__":
                     except (KeyError, IndexError, TypeError) as e: # KeyError when field_name does not exists 
                         tmp += "''".ljust(COL_SIZE) + ", "
                 print(tmp)
+
+                if 'app_name' in data_row:
+                    if data_row['app_name'].ljust(20) in fail_count:
+                        fail_count[data_row['app_name'].ljust(20)] += 1
+                    else:  
+                        fail_count[data_row['app_name'].ljust(20)] = 1
                 continue
             
 
@@ -404,9 +412,17 @@ if __name__ == "__main__":
 
     print(str(row_errors) + " rows removed of " + str(unique_key + row_errors) + " in total" )
     print('____________________________')
-    print('_________ COUNT ____________')
+    print('____COUNT___accepted________')
     print('__# accepted rows per app___')
     print('____________________________')
     pprint.pprint(count)
     print('              of total : ' + str(unique_key))
+    print('----------------------------')
+
+    print('____________________________')
+    print('___COUNT___erased___________')
+    print('__# accepted rows per app___')
+    print('____________________________')
+    pprint.pprint(fail_count)
+    print('              of total : ' + str(row_errors))
     print('----------------------------')
