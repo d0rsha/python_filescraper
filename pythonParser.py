@@ -252,7 +252,9 @@ if __name__ == "__main__":
                     'displayed' , 'deviceready', 'fully_drawn', 
                     '1displayed','2deviceready','3fully_drawn',
                     'install_time', 'backdrop_displayed', 'deviceready_error',
-                    'version', 'sdk-version', 'total_time'] 
+                    'version', 'sdk-version', 'total_time',
+                    
+                    ] 
     # All exisisting keys in dict =
     # ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova_version', ' source', 'model','deviceready','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count','cordova_timing']
     
@@ -271,6 +273,7 @@ if __name__ == "__main__":
 
         unique_key = 0
         row_errors = 0
+        fail_count[''.ljust(20)] = 0
         for data_row in dict_data:
 
             try:
@@ -377,6 +380,8 @@ if __name__ == "__main__":
                         fail_count[data_row['app_name'].ljust(20)] += 1
                     else:  
                         fail_count[data_row['app_name'].ljust(20)] = 1
+                else:
+                    fail_count[''.ljust(20)] += 1
                 continue
             
 
@@ -424,5 +429,5 @@ if __name__ == "__main__":
     print('__# accepted rows per app___')
     print('____________________________')
     pprint.pprint(fail_count)
-    print('              of total : ' + str(row_errors))
+    print('              of total : ', row_errors)
     print('----------------------------')
