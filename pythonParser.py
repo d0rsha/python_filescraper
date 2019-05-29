@@ -21,6 +21,24 @@ count = {}
 global fail_count
 fail_count = {}
 
+def print_shit(e):
+    print("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\//////////////////////////////////////")
+    print("   \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\///////////////////////////////////   ")
+    print("       \\\\\\\\\\\\\\\\\\\\\\\\\\\//////////////////////////////        ")
+    print("               \\\\\\\\\\\\\\\\\\\\//////////////////////               ")
+    print("                       \\\\\\\\\\\\/////////////                        ")
+    print("                              \\\\///////                               ")
+    print("                            login_time Error                            ")
+    print(e)
+    print("||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")
+    traceback.print_exc()
+    print("                              \\\\///////                               ")
+    print("                       \\\\\\\\\\\\/////////////                        ")
+    print("               \\\\\\\\\\\\\\\\\\\\//////////////////////               ")
+    print("       \\\\\\\\\\\\\\\\\\\\\\\\\\\//////////////////////////////        ")
+    print("   \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\///////////////////////////////////   ")
+    print("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\//////////////////////////////////////")
+
 def clean(dirty_string):
     """
         Clean string from wierd signs & chars given by regEx
@@ -111,12 +129,13 @@ def parse_line(line, device):
         Device 
     """
     if "device:" in line:
-        if re.search("device: Device", line):
-            attributes = line.split('{')[1].split(',')
-            # Add from current format=device: Device {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
-            for item in attributes:
-                if clean(item) and item.split(':'):
-                    device[ clean(item.split(':')[0]) ] = item.split(':')[1]
+        if not "evaluateJavascript" in line:
+            if re.search("device: Device", line):
+                attributes = line.split('{')[1].split(',')
+                # Add from current format=device: Device {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
+                for item in attributes:
+                    if clean(item) and item.split(':'):
+                        device[ clean(item.split(':')[0]) ] = item.split(':')[1]
 
     
     # Package installed 
@@ -130,15 +149,15 @@ def parse_line(line, device):
         """
         # CordovaWebView Started (A)
         if re.search("Apache Cordova native platform", line):
-            device['cordova_start'] = float(line.split(":")[2])    
+            # device['cordova_start'] = float(line.split(":")[2])    
             device['cordova_version'] = clean( line.split('platform version')[1].split('is')[0] )
             
         # CordovaWebView Loaded (B): Calculate diff from started untill loaded == B - A 
-        if re.search("CordovaWebView is running on device made by", line):
-            device['cordova_loaded'] = float(line.split(":")[2])    
-            device['my_deviceready_timing'] =  int( 1000*(device['cordova_loaded'] - device['cordova_start']) )
-            del device['cordova_loaded']
-            del device['cordova_start']
+        #elif re.search("CordovaWebView is running on device made by", line):
+         #   device['cordova_loaded'] = float(line.split(":")[2])    
+          #  device['my_deviceready_timing'] =  int( 1000*(device['cordova_loaded'] - device['cordova_start']) )
+           # del device['cordova_loaded']
+            #del device['cordova_start']
 
     """
         Specific Chrome console output 
@@ -149,52 +168,76 @@ def parse_line(line, device):
             device['deviceready'] = line.split("deviceready event fired after")[1].split("ms")[0]       
         
         # Ionic Native: Problem 
-        if re.search("Ionic Native: deviceready did not fire within", line):
+        elif re.search("Ionic Native: deviceready did not fire within", line):
             device['deviceready_error'] = "true"       
 
         # Ionic Loaded 
-        if re.search("ionic loaded:", line):
+        elif re.search("ionic loaded:", line):
             device['timer_ionic'] = line.split(":")[1].split("ms")[0].split('.')[0]     
 
         # Cordova device Memory
-        if re.search("device: MemoryUsage", line):
+        elif re.search("device: MemoryUsage", line):
             attributes = line.split('{')[1].split(',')
             # Add from current format=device: MemoryUsage {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
             for item in attributes:
                 device[ clean( item.split(':')[0] ) ] = clean( item.split(':')[1].split(".")[0] )
         
         # Cordova device Memory
-        if re.search("device: BrowserTiming", line):
+        elif re.search("device: BrowserTiming", line):
             attributes = line.split('{')[1].split(',')
             # Add from current format=device: MemoryUsage {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
             for item in attributes:
                 device[ clean( item.split(':')[0] ) ] = clean( item.split(':')[1].split(".")[0] )
-
-
-        """
-            Specific to Boende Appen 
-        """
+        #
+        #    Specific to Boende Appen 
+        #
         # checkBackendVersionIsActive
-        if re.search("checkBackendVersionIsActive", line):
+        elif re.search("checkBackendVersionIsActive", line):
             if not 'timer_backend' in device:
                 device['timer_backend'] = int(line.split("checkBackendVersionIsActive:")[1].split("ms")[0].split(".")[0])
                 device['timer_backend_count'] = 1
             else:
                 device['timer_backend_count'] += 1
         # storage.get('loginToken')
-        if re.search("get\('loginToken'\)", line):
+        elif re.search("get\('loginToken'\)", line):
             if not 'timer_storage' in device:
                 device['timer_storage'] = int(line.split("storage.get('loginToken'):")[1].split("ms")[0].split(".")[0])
                 device['timer_storage_count'] = 1
             else:
                 device['timer_storage_count'] += 1
         # loginService.login()->browser.on('loadstop')
-        if re.search("loginService.login", line):
+        elif re.search("loginService.login", line):
             if not 'timer_loginservice' in device:
                 device['timer_loginservice'] = int(line.split("->browser.on('loadstop'):")[1].split("ms")[0].split(".")[0])
                 device['timer_loginservice_count'] = 1
             else:
                 device['timer_loginservice_count'] += 1
+        
+        #  login_time
+        elif re.search("login_time", line):
+            if not "4login_time" in device:
+                try:
+                    item = line.split("\"")[1]
+                    device[ '4login_time' ] = clean( item.split(':')[1].split("ms")[0].split(".")[0] )
+                except Exception as e:
+                    print_shit(e)
+        
+        elif re.search("storage_time", line):
+            if not "5storage_time" in device:
+                try:
+                    item = line.split("\"")[1]
+                    device[ '5storage_time' ] = clean( item.split(':')[1].split("ms")[0].split(".")[0] )
+                except Exception as e:
+                    print_shit(e)
+        
+        elif re.search("backend_time", line):
+            if not "6backend_time" in device:
+                try:
+                    item = line.split("\"")[1]
+                    device[ '6backend_time' ] = clean( item.split(':')[1].split("ms")[0].split(".")[0] )
+                except Exception as e:
+                    print_shit(e)
+        
     return device
 
 def parse_file(filepath):
@@ -246,15 +289,19 @@ if __name__ == "__main__":
     print("---------------")
 
     # Headers to create in CSV file 
-    csv_columns = ['unique','isVirtual', 'approach','app_name', 'serial','uuid', 
+    csv_columns = [
+                    'unique','isVirtual', 'approach','app_name', 'serial','uuid', 
                     'model',   'manufacturer', 'platform',
                     'version', 'sdk-version',  'cordova', 
                     'displayed' , 'deviceready', 'fully_drawn', 
                     '1displayed','2deviceready','3fully_drawn',
                     'install_time', 'backdrop_displayed', 'deviceready_error',
                     'version', 'sdk-version', 'total_time',
-                    
-                    ] 
+                    # Specific to BoendeAppen
+                    'timer_backend','timer_backend_count','timer_storage','timer_storage_count',
+                    'timer_loginservice','timer_loginservice_count',
+                    '4login_time', '5storage_time', '6backend_time'
+                  ] 
     # All exisisting keys in dict =
     # ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova_version', ' source', 'model','deviceready','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count','cordova_timing']
     
@@ -290,15 +337,16 @@ if __name__ == "__main__":
                 #
                 if "android" not in data_row["app_name"]:
                     if 'fully_drawn' not in data_row:
-                        continue # Skip if app is not android and do not contain fully_drawn
+                        raise KeyError('Fully drawn not among input')
+                        # Skip if app is not android and do not contain fully_drawn
 
                 #
                 #    Rename / Give app nickname
                 #
                 data_row['app_name'] = re.sub('com.avrethem.', '', data_row['app_name'])
                 data_row['app_name'] = re.sub('com.ionicframework.', '', data_row['app_name'])
-                data_row['app_name'] = re.sub('android.', 'droid', data_row['app_name'])
-                data_row['app_name'] = re.sub('app', '', data_row['app_name'])
+                # data_row['app_name'] = re.sub('android.', 'droid', data_row['app_name'])
+                # data_row['app_name'] = re.sub('app', '', data_row['app_name'])
                 data_row['app_name'] = re.sub('se.solutionxperts.', '', data_row['app_name'])
                 data_row['app_name'] = re.sub('.stangastaden', '', data_row['app_name'])
                 data_row['app_name'] = re.sub('xom.xwalk.browser', 'plugins.xwalk', data_row['app_name'])
@@ -320,6 +368,15 @@ if __name__ == "__main__":
                 if 'fully_drawn' in data_row:
                     data_row['3fully_drawn'] = data_row['fully_drawn'] - data_row['deviceready']
                 
+                    if '4login_time' in data_row and '6backend_time' in data_row:
+                        data_row['3fully_splitted'] = int(data_row['3fully_drawn']) - (int(data_row['4login_time']) + int(data_row['5storage_time']) + int(data_row['6backend_time']))
+                        data_row['4login_time'] = int(data_row['4login_time']) - int(data_row['6backend_time'])
+                        data_row['6backend_time'] = int(data_row['6backend_time'])
+
+                        if '5storage_time' in data_row:
+                            data_row['5storage_time'] = int(data_row['5storage_time'])
+
+
                 #
                 #    Interpolate with 99 % confidence: Add API-level for Android-rows that are mssing sdk-version
                 #
@@ -406,6 +463,8 @@ if __name__ == "__main__":
 
                 except KeyError: # KeyError when field_name does not exists 
                     field_value = ''
+
+
                 csv_dict[field_name] = field_value
 
             """ >>>> TMP >>>> <<<<< TMP <<<<< """
