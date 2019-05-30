@@ -8,15 +8,88 @@ import traceback
 import csv
 
 ### 
-### THREADS
+### MULTITHREADING
 ###
 import threading
 import time
 
-THREADS = 128
+# Threads per process!!
+THREADS = 4
 globalLock = threading.Lock()
 threads = []
 filenumber = 0
+
+###
+### MULTIPROCESSING
+###
+import time
+from multiprocessing import Pool
+ 
+PROFFESORS = 8
+
+#
+#   Arguments and global variable 
+#
+parser = argparse.ArgumentParser()
+parser.add_argument("path")
+args = parser.parse_args()
+
+global tests 
+tests= []
+global result
+result = []
+global count 
+count = {}
+global fail_count
+fail_count = {}
+
+"""
+    Creates #THREADS new threads, 
+        Threads need synchonization for global variable
+"""
+def multi_threading_compute(a_list):
+    poolsize = int(len(a_list) / THREADS)
+    print ("||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")
+    print ("|||||||||||||| EACH THREAD SHOULD RUN " + str(poolsize).ljust(3) + " TIMES ||||||||||||||||||||||||||||||||||||||||||||||||||")
+    print ("|||||||||||||| OF ", str(len(a_list)).ljust(5), " IN TOTAL |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")
+    # Create new threads
+    # Balance workload
+    # Lock in threads 
+
+    for pid in range(THREADS):
+        start = pid * poolsize
+        end = start + poolsize
+        print(pid,"[", start, ":",end)
+        thread = myThread(pid, "Thread-" + str(pid), a_list[start:end])
+        thread.start()
+        threads.append(thread)
+
+    # Wait for all threads to complete
+    for t in threads:
+        t.join()
+
+    return tests
+ 
+"""
+    Spawns #PROFFESSOR new processes 
+        Finished processes wake up every 0.5 second to recheck 
+        Does not need Synchronization: Handled by framework 
+            Variables not in same namespace 
+"""
+def multi_processing_compute(a_list):
+    chunks = [a_list[i::PROFFESORS] for i in range(PROFFESORS)]
+ 
+    pool = Pool(processes=PROFFESORS)
+ 
+    result = pool.map_async(multi_threading_compute, chunks)
+ 
+    while not result.ready():
+        print("Sleeping...")
+        time.sleep(0.5)
+ 
+    return result.get()
+
+
 
 class myThread (threading.Thread):
     def __init__(self, tid, name, workload):
@@ -41,20 +114,9 @@ class myThread (threading.Thread):
             globalLock.acquire()
             tests.extend(self.local_tests)
             globalLock.release()
-
 #
-#   Arguments and global variable 
+# END MULTI stuff
 #
-parser = argparse.ArgumentParser()
-parser.add_argument("path")
-args = parser.parse_args()
-
-global tests 
-tests= []
-global count 
-count = {}
-global fail_count
-fail_count = {}
 
 def findFilesInFolder(path, pathList, extension, subFolders = True):
     """  Recursive function to find all files of an extension type in a folder (and optionally in all subfolders too)
@@ -147,27 +209,9 @@ def search_filepath(root_path, match):
     pathList = []
     pathList = findFilesInFolder(root_path, pathList, 'logcat', True)
 
-    poolsize = int(len(pathList) / THREADS)
-    print ("||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")
-    print ("|||||||||||||| EACH THREAD SHOULD RUN " + str(poolsize).ljust(3) + " TIMES ||||||||||||||||||||||||||||||||||||||||||||||||||")
-    print ("|||||||||||||| OF ", str(len(pathList)).ljust(5), " IN TOTAL |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")
-    # Create new threads
-    # Balance workload
-    # Lock in threads 
-    for pid in range(THREADS):
-        start = pid * poolsize
-        end = start + poolsize
-        print(pid,"[", start, ":",end)
-        thread = myThread(pid, "Thread-" + str(pid), pathList[start:end])
-        thread.start()
-        threads.append(thread)
+    result = multi_processing_compute(pathList)
+    print(result)
 
-    # Wait for all threads to complete
-    for t in threads:
-        t.join()
-
-    print (tests)
-        
     return 
 
 def parse_file(filepath):
@@ -345,14 +389,14 @@ def parse_line(line, device):
 """
     Main program
 
-    calls search_filepath, result added to global variable 'tests'
+    calls search_filepath, result added to global variable 'result'
     creates csv file with headers according to csv_columns 
 """
 if __name__ == "__main__":
     search_filepath(args.path, 'logcat')
 
     import pprint
-    # pprint.pprint(tests)
+    # pprint.pprint(result)
     print("---------------")
 
     # Headers to create in CSV file 
@@ -378,7 +422,7 @@ if __name__ == "__main__":
     print(tmp)
 
 
-    dict_data = tests
+    dict_data = result
 
     with open('test.csv', 'w') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
@@ -391,7 +435,7 @@ if __name__ == "__main__":
 
             try:
                 #
-                #    Remove broken tests
+                #    Remove broken result
                 #
                 if not clean( str(data_row['serial']) ) \
                 or not clean( str(data_row['app_name']) )\
@@ -474,7 +518,7 @@ if __name__ == "__main__":
                         data_row['sdk-version'] = 'null'
 
                 #
-                #    Interpolate with 100% confidence: Add approach to old tests that are missing those outputs to log
+                #    Interpolate with 100% confidence: Add approach to old result that are missing those outputs to log
                 #
                 if not 'approach' in data_row:
                     if 'cordova' in data_row:
