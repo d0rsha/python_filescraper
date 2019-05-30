@@ -14,7 +14,7 @@ import threading
 import time
 
 # Threads per process!!
-THREADS = 4
+THREADS = 32
 globalLock = threading.Lock()
 threads = []
 filenumber = 0
@@ -24,8 +24,9 @@ filenumber = 0
 ###
 import time
 from multiprocessing import Pool
- 
-PROFFESORS = 8
+from multiprocessing import current_process
+
+PROFFESORS = 14
 
 #
 #   Arguments and global variable 
@@ -43,15 +44,35 @@ count = {}
 global fail_count
 fail_count = {}
 
+
+"""
+    Print <PID> (message)
+"""
+def process_print(*argv):  
+    try:
+        if not 'MainProcess' in str(current_process()):
+            pid = str(str(current_process()).split("-")[1].split(',')[0])
+        else:
+            pid = "Main"
+        print_me = ''
+        for arg in argv:  
+            print_me += str(arg)
+        print('<', pid.ljust(4), '> ', print_me)
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        print('<', str(current_process()), '> ', argv)
+
+    
 """
     Creates #THREADS new threads, 
         Threads need synchonization for global variable
 """
 def multi_threading_compute(a_list):
     poolsize = int(len(a_list) / THREADS)
-    print ("||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")
-    print ("|||||||||||||| EACH THREAD SHOULD RUN " + str(poolsize).ljust(3) + " TIMES ||||||||||||||||||||||||||||||||||||||||||||||||||")
-    print ("|||||||||||||| OF ", str(len(a_list)).ljust(5), " IN TOTAL |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")
+    process_print ("||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")
+    process_print ("|||||||||||||| EACH THREAD SHOULD RUN " + str(poolsize).ljust(3) + " TIMES ||||||||||||||||||||||||||||||||||||||||||||||||||")
+    process_print ("|||||||||||||| OF ", str(len(a_list)).ljust(5), " IN TOTAL |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")
     # Create new threads
     # Balance workload
     # Lock in threads 
@@ -59,7 +80,7 @@ def multi_threading_compute(a_list):
     for pid in range(THREADS):
         start = pid * poolsize
         end = start + poolsize
-        print(pid,"[", start, ":",end)
+        process_print(pid,"[", start, ":",end)
         thread = myThread(pid, "Thread-" + str(pid), a_list[start:end])
         thread.start()
         threads.append(thread)
@@ -81,13 +102,14 @@ def multi_processing_compute(a_list):
  
     pool = Pool(processes=PROFFESORS)
  
-    result = pool.map_async(multi_threading_compute, chunks)
+    result = pool.map(multi_threading_compute, chunks)
  
-    while not result.ready():
-        print("Sleeping...")
-        time.sleep(0.5)
- 
-    return result.get()
+ #   while not result.ready():
+  #      process_print("Sleeping...")
+   #     time.sleep(0.5)
+    
+    process_print("Res = ", str(len(result)))
+    return result
 
 
 
@@ -101,14 +123,14 @@ class myThread (threading.Thread):
         self.counter = 0
 
     def run(self):
-            print ("Starting " + self.name)
+            process_print ("Starting " + self.name)
 
             for entry in self.workload:
                 dic = parse_file(entry)
                 # Get lock to synchronize threads
                 self.local_tests.insert(1, dic)
                 self.counter += 1
-                print ("[",self.tid,"] File:",str(self.counter).ljust(3),"/",str(len(self.workload)).ljust(4), " -> ", entry)
+                process_print ("[",str(self.tid).rjust(4),"] File:",str(self.counter).rjust(4),"/",str(len(self.workload)).rjust(4), " -> ", entry)
                 # Free lock to release next thread
             
             globalLock.acquire()
@@ -134,28 +156,28 @@ def findFilesInFolder(path, pathList, extension, subFolders = True):
             elif entry.is_dir() and subFolders:   # if its a directory, then repeat process as a nested function
                 pathList = findFilesInFolder(entry.path, pathList, extension, subFolders)
     except OSError:
-        print('Cannot access ' + path +'. Probably a permissions error')
+        process_print('Cannot access ' + path +'. Probably a permissions error')
 
     return pathList
 
 
 def print_shit(e):
-    print("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\//////////////////////////////////////")
-    print("   \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\///////////////////////////////////   ")
-    print("       \\\\\\\\\\\\\\\\\\\\\\\\\\\//////////////////////////////        ")
-    print("               \\\\\\\\\\\\\\\\\\\\//////////////////////               ")
-    print("                       \\\\\\\\\\\\/////////////                        ")
-    print("                              \\\\///////                               ")
-    print("                            login_time Error                            ")
-    print(e)
-    print("||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")
+    process_print("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\//////////////////////////////////////")
+    process_print("   \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\///////////////////////////////////   ")
+    process_print("       \\\\\\\\\\\\\\\\\\\\\\\\\\\//////////////////////////////        ")
+    process_print("               \\\\\\\\\\\\\\\\\\\\//////////////////////               ")
+    process_print("                       \\\\\\\\\\\\/////////////                        ")
+    process_print("                              \\\\///////                               ")
+    process_print("                            login_time Error                            ")
+    process_print(e)
+    process_print("||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")
     traceback.print_exc()
-    print("                              \\\\///////                               ")
-    print("                       \\\\\\\\\\\\/////////////                        ")
-    print("               \\\\\\\\\\\\\\\\\\\\//////////////////////               ")
-    print("       \\\\\\\\\\\\\\\\\\\\\\\\\\\//////////////////////////////        ")
-    print("   \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\///////////////////////////////////   ")
-    print("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\//////////////////////////////////////")
+    process_print("                              \\\\///////                               ")
+    process_print("                       \\\\\\\\\\\\/////////////                        ")
+    process_print("               \\\\\\\\\\\\\\\\\\\\//////////////////////               ")
+    process_print("       \\\\\\\\\\\\\\\\\\\\\\\\\\\//////////////////////////////        ")
+    process_print("   \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\///////////////////////////////////   ")
+    process_print("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\//////////////////////////////////////")
 
 def clean(dirty_string):
     """
@@ -179,8 +201,8 @@ def timestamp_to_ms(stamp):
     units = re.split('[\d]+', stamp)
     integers = [x for x in integers if x and not x == ' ']
     units = [x for x in units if x and not x == ' ']
-    # print('[INFO:CONSOLE] line=', 'integers', integers)
-    # print('[INFO:CONSOLE] line=', 'units   ', units)
+    # process_print('[INFO:CONSOLE] line=', 'integers', integers)
+    # process_print('[INFO:CONSOLE] line=', 'units   ', units)
 
     if (len(integers) != len(units)):
         raise ValueError('# integers does not match # units')
@@ -194,7 +216,7 @@ def timestamp_to_ms(stamp):
             time += (int(integer) * 1000 * 60)
         index += 1
 
-    # print('[INFO:CONSOLE] line=', 'time==', time)
+    # process_print('[INFO:CONSOLE] line=', 'time==', time)
     return time
 
 def search_filepath(root_path, match):
@@ -210,9 +232,9 @@ def search_filepath(root_path, match):
     pathList = findFilesInFolder(root_path, pathList, 'logcat', True)
 
     result = multi_processing_compute(pathList)
-    print(result)
+    print("REsult length= ", len(result))
 
-    return 
+    return result
 
 def parse_file(filepath):
     """
@@ -238,15 +260,15 @@ def parse_file(filepath):
                         device = parse_line(line, device)
                         linenumber += 1
                     except Exception as e:
-                        print("_________/!\\ Line Error /!\\_________")
-                        print(line)
-                        print(e)
+                        process_print("_________/!\\ Line Error /!\\_________")
+                        process_print(line)
+                        process_print(e)
                         traceback.print_exc()
     except Exception as e:
-        print('_________/!\\ Probbly error Opening file /!\\_________')
-        print(e)
+        process_print('_________/!\\ Probbly error Opening file /!\\_________')
+        process_print(e)
         traceback.print_exc()
-    #print(device)
+    #process_print(device)
     return device
 
 def parse_line(line, device):
@@ -393,10 +415,13 @@ def parse_line(line, device):
     creates csv file with headers according to csv_columns 
 """
 if __name__ == "__main__":
-    search_filepath(args.path, 'logcat')
+    dict_data = search_filepath(args.path, 'logcat')
 
     import pprint
     # pprint.pprint(result)
+    print("---------------")
+    print(result)
+    print("Length of result == ", len(result))
     print("---------------")
 
     # Headers to create in CSV file 
@@ -404,7 +429,7 @@ if __name__ == "__main__":
                     'unique','isVirtual', 'approach','app_name', 'serial','uuid', 
                     'model',   'manufacturer', 'platform',
                     'version', 'sdk-version',  'cordova', 
-                     'displayed' , 'deviceready', 'fully_drawn', 'install_time',
+                    'displayed' , 'deviceready', 'fully_drawn', 'install_time',
                     '1displayed','2deviceready','3fully_drawn', 'total_time',
                     # 'backdrop_displayed', 'deviceready_error',
                     # Specific to BoendeAppen
@@ -421,9 +446,7 @@ if __name__ == "__main__":
         tmp += str(clean( str(field_name[-COL_SIZE:]) )).ljust(COL_SIZE) + ", "
     print(tmp)
 
-
-    dict_data = result
-
+    
     with open('test.csv', 'w') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
         writer.writeheader()
