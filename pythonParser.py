@@ -293,14 +293,13 @@ if __name__ == "__main__":
                     'unique','isVirtual', 'approach','app_name', 'serial','uuid', 
                     'model',   'manufacturer', 'platform',
                     'version', 'sdk-version',  'cordova', 
-                    'displayed' , 'deviceready', 'fully_drawn', 
-                    '1displayed','2deviceready','3fully_drawn',
-                    'install_time', 'backdrop_displayed', 'deviceready_error',
-                    'version', 'sdk-version', 'total_time',
+                    # 'displayed' , 'deviceready', 'fully_drawn', 
+                    '1displayed','2deviceready','3fully_drawn', 'total_time',
+                    # 'install_time', 'backdrop_displayed', 'deviceready_error',
                     # Specific to BoendeAppen
-                    'timer_backend','timer_backend_count','timer_storage','timer_storage_count',
-                    'timer_loginservice','timer_loginservice_count',
-                    '4login_time', '5storage_time', '6backend_time'
+                    # 'timer_backend','timer_backend_count','timer_storage','timer_storage_count',
+                    # 'timer_loginservice','timer_loginservice_count',
+                    '3fully_splitted', '4login_time', '5storage_time', '6backend_time'
                   ] 
     # All exisisting keys in dict =
     # ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova_version', ' source', 'model','deviceready','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count','cordova_timing']
@@ -360,21 +359,24 @@ if __name__ == "__main__":
                 # Sort Values by deltider 
                 # deviceready is total time until device is ready from start 
                 # 2deviceready is time it took for framework to load 
-                if 'displayed' in data_row:
+                if 'displayed' == data_row:
                     data_row['1displayed'] = data_row['displayed']
                     if 'deviceready' in data_row:
                         data_row['2deviceready'] = data_row['deviceready']
                         data_row['deviceready'] = int(data_row['displayed']) + int(data_row['deviceready'])
-                if 'fully_drawn' in data_row:
+                if 'fully_drawn' == data_row:
                     data_row['3fully_drawn'] = data_row['fully_drawn'] - data_row['deviceready']
                 
                     if '4login_time' in data_row and '6backend_time' in data_row:
-                        data_row['3fully_splitted'] = int(data_row['3fully_drawn']) - (int(data_row['4login_time']) + int(data_row['5storage_time']) + int(data_row['6backend_time']))
+                        ## 3fully splitted before 
+                        data_row['3fully_splitted'] = int(data_row['3fully_drawn']) - int(data_row['4login_time'])
+                        ## 4login-time
                         data_row['4login_time'] = int(data_row['4login_time']) - int(data_row['6backend_time'])
+                        ## 6backend-time
                         data_row['6backend_time'] = int(data_row['6backend_time'])
 
-                        if '5storage_time' in data_row:
-                            data_row['5storage_time'] = int(data_row['5storage_time'])
+                    else:
+                        data_row['3fully_splitted'] = int(data_row['3fully_drawn'])
 
 
                 #
@@ -422,15 +424,16 @@ if __name__ == "__main__":
                     count[data_row['app_name'].ljust(20)] = 1
 
             except (KeyError) as e:
-                tmp = "Parse error, removing row" + str(row_errors).rjust(3) + ": "
+                # tmp = "Parse error, removing row" + str(row_errors).rjust(3) + ": "
+                # for field_name in csv_columns:
+                #     try:
+                #         COL_SIZE = int(len(field_name))
+                #         tmp += str(clean( str(data_row[field_name][-COL_SIZE:]) )).ljust(COL_SIZE) + ", "
+                #     except (KeyError, IndexError, TypeError) as e: # KeyError when field_name does not exists 
+                #         tmp += "''".ljust(COL_SIZE) + ", "
+                # print(tmp)
+                
                 row_errors += 1
-                for field_name in csv_columns:
-                    try:
-                        COL_SIZE = int(len(field_name))
-                        tmp += str(clean( str(data_row[field_name][-COL_SIZE:]) )).ljust(COL_SIZE) + ", "
-                    except (KeyError, IndexError, TypeError) as e: # KeyError when field_name does not exists 
-                        tmp += "''".ljust(COL_SIZE) + ", "
-                print(tmp)
 
                 if 'app_name' in data_row:
                     if data_row['app_name'].ljust(20) in fail_count:
