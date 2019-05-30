@@ -15,7 +15,7 @@ import threading
 import time
 
 # Threads per process!!
-THREADS = 32
+THREADS = 1
 globalLock = threading.Lock()
 threads = []
 filenumber = 0
@@ -104,24 +104,9 @@ def multi_processing_compute(a_list):
 
     # launching multiple evaluations asynchronously *may* use more processes
     multiple_results = [pool.apply_async(multi_threading_compute, [chunks[i]]) for i in range(PROFFESORS)]
-    print ([res.get(timeout=180) for res in multiple_results])
-
-    return [res.get(timeout=180) for res in multiple_results]
+    # print ([res.get(timeout=180) for res in multiple_results])
+    return [res.get(timeout=720) for res in multiple_results]
     
-#     result = pool.map(multi_threading_compute, chunks)
-    
-#     print (result)
-#  #   while not result.ready():
-#   #      process_print("Sleeping...")
-#    #     time.sleep(0.5)
-    
-#     process_print("Res = ", str(len(result)))
-#     return result
-
-    
-
-
-
 
 class myThread (threading.Thread):
     def __init__(self, tid, name, workload):
@@ -242,19 +227,6 @@ def search_filepath(root_path, match):
     pathList = findFilesInFolder(root_path, pathList, 'logcat', True)
 
     result = multi_processing_compute(pathList)
-    print("REsult length= ", len(result))
-    pprint.pprint(result)
-
-
-    pprint.pprint(result[0])
-    print("---------------")
-    pprint.pprint(result[1])
-    print("---------------")
-    pprint.pprint(result[2])
-    print("---------------")
-    pprint.pprint(result[3])
-    print("---------------")
-    pprint.pprint(result[4])
     return result
 
 def parse_file(filepath):
@@ -436,12 +408,17 @@ def parse_line(line, device):
     creates csv file with headers according to csv_columns 
 """
 if __name__ == "__main__":
-    dict_data = search_filepath(args.path, 'logcat')
+    dict_data = []
+
+    res = search_filepath(args.path, 'logcat')
+    for bin in res:
+        dict_data.extend(bin)
+
 
     # pprint.pprint(result)
     print("---------------")
-    print(result)
-    print("Length of result == ", len(result))
+    # print(dict_data)
+    print("Length of result == ", len(dict_data))
     print("---------------")
 
     # Headers to create in CSV file 
