@@ -15,7 +15,7 @@ import threading
 import time
 
 # Threads per process!!
-THREADS = 1
+THREADS = 2
 globalLock = threading.Lock()
 threads = []
 filenumber = 0
@@ -27,7 +27,7 @@ import time
 from multiprocessing import Pool
 from multiprocessing import current_process
 
-PROFFESORS = 14
+PROFFESORS = 20
 
 #
 #   Arguments and global variable 
@@ -44,7 +44,6 @@ global count
 count = {}
 global fail_count
 fail_count = {}
-
 
 """
     Print <PID> (message)
@@ -498,17 +497,20 @@ if __name__ == "__main__":
                 if 'fully_drawn' in data_row:
                     data_row['3fully_drawn'] = data_row['fully_drawn'] - data_row['deviceready']
                 
-                    if '4login_time' in data_row and '5backend_time' in data_row:
+                    if '4login_time' in data_row:
                         ## 3fully splitted before 
                         data_row['3fully_splitted'] = int(data_row['3fully_drawn']) - int(data_row['4login_time'])
-                        ## 4login-time
-                        data_row['4login_time'] = int(data_row['4login_time']) - int(data_row['5backend_time'])
-                        ## 5backend-time
-                        data_row['5backend_time'] = int(data_row['5backend_time'])
-
+                        if '5backend_time' in data_row:
+                            ## 4login-time
+                            data_row['4login_time'] = int(data_row['4login_time']) - int(data_row['5backend_time'])
+                            ## 5backend-time
+                            data_row['5backend_time'] = int(data_row['5backend_time'])
+                        else:
+                            data_row['5backend_time'] = 0
                     else:
                         data_row['3fully_splitted'] = int(data_row['3fully_drawn'])
-
+                        data_row['4login_time'] = 0 
+                        data_row['5backend_time'] = 0
 
                 #
                 #    Interpolate with 99 % confidence: Add API-level for Android-rows that are mssing sdk-version
@@ -546,7 +548,7 @@ if __name__ == "__main__":
                     else:
                         data_row['approach'] = 'native'
 
-                # 
+                #
                 #   Count 
                 # 
                 if data_row['app_name'].ljust(20) in count:
@@ -555,7 +557,7 @@ if __name__ == "__main__":
                     count[data_row['app_name'].ljust(20)] = 1
 
             except (KeyError) as e:
-                tmp = "Parse error, removing row" + str(row_errors).rjust(3) + ": "
+                tmp = "Parse error, removing row" + str(unique_key + row_errors).rjust(3) + ": "
                 for field_name in csv_columns:
                     try:
                         COL_SIZE = int(len(field_name))
@@ -603,6 +605,21 @@ if __name__ == "__main__":
 
             """ >>>> TMP >>>> <<<<< TMP <<<<< """
             csv_dict['total_time'] = total_time
+
+            if (csv_dict['1displayed'] == ''):
+                csv_dict['1displayed'] = 0
+            if (csv_dict['2deviceready'] == ''):
+                csv_dict['2deviceready'] = 0
+            if (csv_dict['3fully_splitted'] == ''):
+                csv_dict['3fully_splitted'] = 0
+            if (csv_dict['4login_time'] == ''):
+                csv_dict['4login_time'] = 0
+            if (csv_dict['5backend_time'] == ''):
+                csv_dict['5backend_time'] = 0
+            sum = (int(csv_dict['1displayed']) + int(csv_dict['2deviceready']) + int(csv_dict['3fully_splitted']) + int(csv_dict['4login_time']) + int(csv_dict['5backend_time']))
+            if (int(csv_dict['total_time']) == sum ):
+                print('Failed sum for ', csv_dict['app_name'], '|   tot=', csv_dict['total_time'],'    sum=', sum)
+
             """ >>>> TMP >>>> <<<<< TMP <<<<< """
             csv_dict['unique'] = unique_key
             unique_key += 1
@@ -622,5 +639,5 @@ if __name__ == "__main__":
     print('__# accepted rows per app___')
     print('____________________________')
     pprint.pprint(fail_count)
-    print('              of total : ', row_errors)
+    print('             of total : ', row_errors)
     print('----------------------------')
