@@ -88,6 +88,7 @@ def search_filepath(root_path, match):
     @param root_path : str          - not case sensitive
     @param match : str              - name of files to match 
     """
+    filenumber = 0
     for root, dirs, files in os.walk(root_path):
         for filename in files:
             # print(filename)
@@ -95,6 +96,9 @@ def search_filepath(root_path, match):
                 #global tests
                 dic = parse_file(os.path.join(root, filename))
                 tests.insert(1, dic)
+
+                filenumber += 1
+                print ("File: " + str(filenumber).ljust(3) + " " + root + "/" + filename)
     return 
 
 def parse_line(line, device):
@@ -103,32 +107,37 @@ def parse_line(line, device):
         Android specific 
     """
     if "vityMana" in line:
-        ## Displayed
-        if re.search("ActivityManager(.*)Displayed(.*)\.MainActivity", line):
-            if "(total" not in line:
-                device['displayed'] = timestamp_to_ms(line.split("MainActivity: +")[1])
-            else:
-                device['displayed'] = timestamp_to_ms(line.split("MainActivity: +")[1].split("total")[0])
-                device['displayed_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])    
-            device['app_name']  = line.split("Displayed ")[1].split("/.MainActivity")[0]
-        # Displayed BackdropActivity /!\ Must be else if of previous case 
-        elif re.search("ActivityManager(.*)Displayed(.*)\.BackdropActivity", line):
-            #activity = line.split(".")[-1].split(":")[0]
-            if 'app_name' in device:
-                if device['app_name'] in line:
-                    if "(total" not in line:
-                        device['backdrop_displayed'] = timestamp_to_ms(line.split("BackdropActivity: +")[1])
-                    else:
-                        device['backdrop_displayed'] = timestamp_to_ms(line.split("BackdropActivity: +")[1].split("total")[0])
+        if "Displayed" in line:
+            ## Displayed
+            if re.search("ActivityManager(.*)Displayed(.*)\.MainActivity", line):
+                if "(total" not in line:
+                    device['displayed'] = timestamp_to_ms(line.split("MainActivity: +")[1])
+                else:
+                    device['displayed'] = timestamp_to_ms(line.split("MainActivity: +")[1].split("total")[0])
+                    device['displayed_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])    
+                device['app_name']  = line.split("Displayed ")[1].split("/.MainActivity")[0]
+            # Displayed BackdropActivity /!\ Must be else if of previous case 
+            elif re.search("ActivityManager(.*)Displayed(.*)\.BackdropActivity", line):
+                #activity = line.split(".")[-1].split(":")[0]
+                if 'app_name' in device:
+                    if device['app_name'] in line:
+                        if "(total" not in line:
+                            device['backdrop_displayed'] = timestamp_to_ms(line.split("BackdropActivity: +")[1])
+                        else:
+                            device['backdrop_displayed'] = timestamp_to_ms(line.split("BackdropActivity: +")[1].split("total")[0])
         
         # Fully Drawn 
-        if re.search("Fully drawn", line):          
-            device['fully_drawn'] = timestamp_to_ms(line.split("Fully drawn")[1].split(":")[1])
-
-    """
-        Device 
-    """
-    if "device:" in line:
+        elif re.search("Fully drawn", line):          
+            if "(total" not in line:          
+                device['fully_drawn'] = timestamp_to_ms(line.split("Fully drawn")[1].split(":")[1])
+            else:
+                device['fully_drawn'] = timestamp_to_ms(line.split("MainActivity: +")[1].split("total")[0])
+                device['fully_drawn_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])
+         
+    #
+    #    Device 
+    #
+    elif "device:" in line:
         if not "evaluateJavascript" in line:
             if re.search("device: Device", line):
                 attributes = line.split('{')[1].split(',')
@@ -139,11 +148,11 @@ def parse_line(line, device):
 
     
     # Package installed 
-    if "Package" in line:
-        if re.search("I\/Pm\([0-9]+\)(.*)Package(.*)installed", line) and "android" not in line:          
-            device['install_time'] = timestamp_to_ms(line.split("installed in")[1]) 
+    #if "Package" in line:
+     #   if re.search("I\/Pm\([0-9]+\)(.*)Package(.*)installed", line) and "android" not in line:          
+      #      device['install_time'] = timestamp_to_ms(line.split("installed in")[1]) 
             
-    if "Cordova" in line:
+    elif "Cordova" in line:
         """
             Cordova specific 
         """
@@ -159,10 +168,10 @@ def parse_line(line, device):
            # del device['cordova_loaded']
             #del device['cordova_start']
 
-    """
-        Specific Chrome console output 
-    """
-    if "INFO:" in line:
+    #
+    #    Specific Chrome console output 
+    #
+    elif "INFO:" in line:
         # Ionic Native: deviceready
         if re.search("Ionic Native: deviceready event fired after", line):
             device['deviceready'] = line.split("deviceready event fired after")[1].split("ms")[0]       
@@ -192,26 +201,26 @@ def parse_line(line, device):
         #    Specific to Boende Appen 
         #
         # checkBackendVersionIsActive
-        elif re.search("checkBackendVersionIsActive", line):
-            if not 'timer_backend' in device:
-                device['timer_backend'] = int(line.split("checkBackendVersionIsActive:")[1].split("ms")[0].split(".")[0])
-                device['timer_backend_count'] = 1
-            else:
-                device['timer_backend_count'] += 1
-        # storage.get('loginToken')
-        elif re.search("get\('loginToken'\)", line):
-            if not 'timer_storage' in device:
-                device['timer_storage'] = int(line.split("storage.get('loginToken'):")[1].split("ms")[0].split(".")[0])
-                device['timer_storage_count'] = 1
-            else:
-                device['timer_storage_count'] += 1
-        # loginService.login()->browser.on('loadstop')
-        elif re.search("loginService.login", line):
-            if not 'timer_loginservice' in device:
-                device['timer_loginservice'] = int(line.split("->browser.on('loadstop'):")[1].split("ms")[0].split(".")[0])
-                device['timer_loginservice_count'] = 1
-            else:
-                device['timer_loginservice_count'] += 1
+        # elif re.search("checkBackendVersionIsActive", line):
+        #     if not 'timer_backend' in device:
+        #         device['timer_backend'] = int(line.split("checkBackendVersionIsActive:")[1].split("ms")[0].split(".")[0])
+        #         device['timer_backend_count'] = 1
+        #     else:
+        #         device['timer_backend_count'] += 1
+        # # storage.get('loginToken')
+        # elif re.search("get\('loginToken'\)", line):
+        #     if not 'timer_storage' in device:
+        #         device['timer_storage'] = int(line.split("storage.get('loginToken'):")[1].split("ms")[0].split(".")[0])
+        #         device['timer_storage_count'] = 1
+        #     else:
+        #         device['timer_storage_count'] += 1
+        # # loginService.login()->browser.on('loadstop')
+        # elif re.search("loginService.login", line):
+        #     if not 'timer_loginservice' in device:
+        #         device['timer_loginservice'] = int(line.split("->browser.on('loadstop'):")[1].split("ms")[0].split(".")[0])
+        #         device['timer_loginservice_count'] = 1
+        #     else:
+        #         device['timer_loginservice_count'] += 1
         
         #  login_time
         elif re.search("login_time", line):
@@ -222,19 +231,11 @@ def parse_line(line, device):
                 except Exception as e:
                     print_shit(e)
         
-        elif re.search("storage_time", line):
-            if not "5storage_time" in device:
-                try:
-                    item = line.split("\"")[1]
-                    device[ '5storage_time' ] = clean( item.split(':')[1].split("ms")[0].split(".")[0] )
-                except Exception as e:
-                    print_shit(e)
-        
         elif re.search("backend_time", line):
-            if not "6backend_time" in device:
+            if not "5backend_time" in device:
                 try:
                     item = line.split("\"")[1]
-                    device[ '6backend_time' ] = clean( item.split(':')[1].split("ms")[0].split(".")[0] )
+                    device[ '5backend_time' ] = clean( item.split(':')[1].split("ms")[0].split(".")[0] )
                 except Exception as e:
                     print_shit(e)
         
@@ -256,18 +257,18 @@ def parse_file(filepath):
     try:
         with open(filepath, 'r') as file: 
             while True:
-                    lines = file.readlines(bufsize)
-                    if not lines:
-                        break
-                    for line in lines:
-                        try:
-                            device = parse_line(line, device)
-                            linenumber += 1
-                        except Exception as e:
-                            print("_________/!\\ Line Error /!\\_________")
-                            print(line)
-                            print(e)
-                            traceback.print_exc()
+                lines = file.readlines(bufsize)
+                if not lines:
+                    break
+                for line in lines:
+                    try:
+                        device = parse_line(line, device)
+                        linenumber += 1
+                    except Exception as e:
+                        print("_________/!\\ Line Error /!\\_________")
+                        print(line)
+                        print(e)
+                        traceback.print_exc()
     except Exception as e:
         print('_________/!\\ Probbly error Opening file /!\\_________')
         print(e)
@@ -293,13 +294,13 @@ if __name__ == "__main__":
                     'unique','isVirtual', 'approach','app_name', 'serial','uuid', 
                     'model',   'manufacturer', 'platform',
                     'version', 'sdk-version',  'cordova', 
-                    # 'displayed' , 'deviceready', 'fully_drawn', 
+                     'displayed' , 'deviceready', 'fully_drawn', 'install_time',
                     '1displayed','2deviceready','3fully_drawn', 'total_time',
-                    # 'install_time', 'backdrop_displayed', 'deviceready_error',
+                    # 'backdrop_displayed', 'deviceready_error',
                     # Specific to BoendeAppen
                     # 'timer_backend','timer_backend_count','timer_storage','timer_storage_count',
                     # 'timer_loginservice','timer_loginservice_count',
-                    '3fully_splitted', '4login_time', '5storage_time', '6backend_time'
+                    '3fully_splitted', '4login_time', '5backend_time'
                   ] 
     # All exisisting keys in dict =
     # ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova_version', ' source', 'model','deviceready','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count','cordova_timing']
@@ -359,21 +360,21 @@ if __name__ == "__main__":
                 # Sort Values by deltider 
                 # deviceready is total time until device is ready from start 
                 # 2deviceready is time it took for framework to load 
-                if 'displayed' == data_row:
+                if 'displayed' in data_row:
                     data_row['1displayed'] = data_row['displayed']
                     if 'deviceready' in data_row:
                         data_row['2deviceready'] = data_row['deviceready']
                         data_row['deviceready'] = int(data_row['displayed']) + int(data_row['deviceready'])
-                if 'fully_drawn' == data_row:
+                if 'fully_drawn' in data_row:
                     data_row['3fully_drawn'] = data_row['fully_drawn'] - data_row['deviceready']
                 
-                    if '4login_time' in data_row and '6backend_time' in data_row:
+                    if '4login_time' in data_row and '5backend_time' in data_row:
                         ## 3fully splitted before 
                         data_row['3fully_splitted'] = int(data_row['3fully_drawn']) - int(data_row['4login_time'])
                         ## 4login-time
-                        data_row['4login_time'] = int(data_row['4login_time']) - int(data_row['6backend_time'])
-                        ## 6backend-time
-                        data_row['6backend_time'] = int(data_row['6backend_time'])
+                        data_row['4login_time'] = int(data_row['4login_time']) - int(data_row['5backend_time'])
+                        ## 5backend-time
+                        data_row['5backend_time'] = int(data_row['5backend_time'])
 
                     else:
                         data_row['3fully_splitted'] = int(data_row['3fully_drawn'])
@@ -424,14 +425,14 @@ if __name__ == "__main__":
                     count[data_row['app_name'].ljust(20)] = 1
 
             except (KeyError) as e:
-                # tmp = "Parse error, removing row" + str(row_errors).rjust(3) + ": "
-                # for field_name in csv_columns:
-                #     try:
-                #         COL_SIZE = int(len(field_name))
-                #         tmp += str(clean( str(data_row[field_name][-COL_SIZE:]) )).ljust(COL_SIZE) + ", "
-                #     except (KeyError, IndexError, TypeError) as e: # KeyError when field_name does not exists 
-                #         tmp += "''".ljust(COL_SIZE) + ", "
-                # print(tmp)
+                tmp = "Parse error, removing row" + str(row_errors).rjust(3) + ": "
+                for field_name in csv_columns:
+                    try:
+                        COL_SIZE = int(len(field_name))
+                        tmp += str(clean( str(data_row[field_name][-COL_SIZE:]) )).ljust(COL_SIZE) + ", "
+                    except (KeyError, IndexError, TypeError) as e: # KeyError when field_name does not exists 
+                        tmp += "''".ljust(COL_SIZE) + ", "
+                print(tmp)
                 
                 row_errors += 1
 
@@ -456,18 +457,18 @@ if __name__ == "__main__":
                     field_value = clean( str(data_row[field_name]) )
 
                     """ 
-                    >>>> TMP >>>>> 
+                    >>>> TMP >>>> 
                     """
                     if '1displayed' == field_name or '2deviceready' == field_name or '3fully_drawn' == field_name:
                         total_time += int(data_row[field_name])
                     """
-                    <<<< TMP <<<<< 
+                    <<<< TMP <<<< 
                     """
 
                 except KeyError: # KeyError when field_name does not exists 
                     field_value = ''
 
-
+                # If all ok: Add to dict 
                 csv_dict[field_name] = field_value
 
             """ >>>> TMP >>>> <<<<< TMP <<<<< """
@@ -493,3 +494,4 @@ if __name__ == "__main__":
     pprint.pprint(fail_count)
     print('              of total : ', row_errors)
     print('----------------------------')
+

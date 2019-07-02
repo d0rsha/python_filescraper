@@ -278,6 +278,7 @@ def parse_line(line, device):
                     device['displayed'] = timestamp_to_ms(line.split("MainActivity: +")[1].split("total")[0])
                     device['displayed_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])    
                 device['app_name']  = line.split("Displayed ")[1].split("/.MainActivity")[0]
+                
             # Displayed BackdropActivity /!\ Must be else if of previous case 
             elif re.search("ActivityManager(.*)Displayed(.*)\.BackdropActivity", line):
                 #activity = line.split(".")[-1].split(":")[0]
@@ -289,8 +290,13 @@ def parse_line(line, device):
                             device['backdrop_displayed'] = timestamp_to_ms(line.split("BackdropActivity: +")[1].split("total")[0])
         
         # Fully Drawn 
-        elif re.search("Fully drawn", line):          
-            device['fully_drawn'] = timestamp_to_ms(line.split("Fully drawn")[1].split(":")[1])
+        elif re.search("Fully drawn", line):
+            if "(total" not in line:          
+                device['fully_drawn'] = timestamp_to_ms(line.split("Fully drawn")[1].split(":")[1])
+            else:
+                device['fully_drawn'] = timestamp_to_ms(line.split("MainActivity: +")[1].split("total")[0])
+                device['fully_drawn_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])
+                
 
     #
     #    Device 
@@ -408,6 +414,7 @@ def parse_line(line, device):
 """
 if __name__ == "__main__":
     dict_data = []
+    ave_dict = {}
 
     res = search_filepath(args.path, 'logcat')
     for bin in res:
@@ -478,8 +485,9 @@ if __name__ == "__main__":
                 # data_row['app_name'] = re.sub('app', '', data_row['app_name'])
                 data_row['app_name'] = re.sub('se.solutionxperts.', '', data_row['app_name'])
                 data_row['app_name'] = re.sub('.stangastaden', '', data_row['app_name'])
+
+                data_row['app_name'] = re.sub('minimal', 'blankapp', data_row['app_name'])
                 data_row['app_name'] = re.sub('xom.xwalk.browser', 'plugins.xwalk', data_row['app_name'])
-                
                 
                 
                 if 'cordova_version' in data_row:
@@ -612,13 +620,18 @@ if __name__ == "__main__":
                 csv_dict['2deviceready'] = 0
             if (csv_dict['3fully_splitted'] == ''):
                 csv_dict['3fully_splitted'] = 0
-            if (csv_dict['4login_time'] == ''):
+            if (csv_dict['4login_time'] == ''): 
                 csv_dict['4login_time'] = 0
             if (csv_dict['5backend_time'] == ''):
                 csv_dict['5backend_time'] = 0
             sum = (int(csv_dict['1displayed']) + int(csv_dict['2deviceready']) + int(csv_dict['3fully_splitted']) + int(csv_dict['4login_time']) + int(csv_dict['5backend_time']))
-            if (int(csv_dict['total_time']) == sum ):
+            if (int(csv_dict['total_time']) != sum ):
                 print('Failed sum for ', csv_dict['app_name'], '|   tot=', csv_dict['total_time'],'    sum=', sum)
+
+            if csv_dict['app_name'] not in ave_dict:
+                ave_dict[csv_dict['app_name']] = total_time
+            else:
+                ave_dict[csv_dict['app_name']] += total_time
 
             """ >>>> TMP >>>> <<<<< TMP <<<<< """
             csv_dict['unique'] = unique_key
@@ -641,3 +654,10 @@ if __name__ == "__main__":
     pprint.pprint(fail_count)
     print('             of total : ', row_errors)
     print('----------------------------')
+
+
+    print('Average appen2.css '.ljust(25),      ave_dict['appen2.css']   /  count['appen2.css          '])
+    print('Average appen2'.ljust(25),           ave_dict['appen2']       /  count['appen2              '])
+    print('Average appen2.xwalk '.ljust(25),    ave_dict['appen2.xwalk'] /  count['appen2.xwalk        '])
+
+
