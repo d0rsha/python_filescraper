@@ -280,11 +280,10 @@ def parse_line(line, device):
             # device['cordova_start'] = float(line.split(":")[2])    
             device['cordova_version'] = clean_str( line.split('platform version')[1].split('is')[0] )
             
-
     #
-    #    Specific Chrome console output 
+    #   Deviceready event
     #
-    elif "INFO:" in line:
+    elif "deviceready" in line:
         # Ionic Native: deviceready
         if re.search("Ionic Native: deviceready event fired after", line):
             device['deviceready'] = line.split("deviceready event fired after")[1].split("ms")[0]       
@@ -292,9 +291,16 @@ def parse_line(line, device):
         # Ionic Native: Problem 
         elif re.search("Ionic Native: deviceready did not fire within", line):
             device['deviceready_error'] = "true"         
-
+        # Ionic Native: Problem 
+        elif re.search("deviceready has not fired after 5 seconds", line):
+            device['deviceready_error'] = "true"  
+    
+    #
+    #    Specific Chrome console output !WARNING! ( NOT ALWAYS IN LOG OUTPUT )
+    #
+    elif "INFO:" in line:
         # Cordova device Memory
-        elif re.search("device: MemoryUsage", line):
+        if re.search("device: MemoryUsage", line):
             attributes = line.split('{')[1].split(',')
             # Add from current format=device: MemoryUsage {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
             for item in attributes:

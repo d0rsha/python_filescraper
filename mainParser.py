@@ -116,9 +116,9 @@ def interpolate_row(data_row):
     return
 
 
-def count_errors(data_row, row_errors, exception):
+def count_errors(data_row, unique_key, errors, exception):
     t1 = 'KeyError: ' + str(exception).ljust(13) 
-    tmp = str(unique_key + row_errors).rjust(3) + ": "
+    tmp = str(unique_key + errors).rjust(3) + ": "
     for field_name in print_columns:
         try:
             COL_SIZE = int(len(field_name))
@@ -140,7 +140,6 @@ def count_errors(data_row, row_errors, exception):
         inc_error_count(fail_count_deviceready, data_row)
     if "fatal_exception" in data_row:
         inc_error_count(fail_count_fatal_error, data_row)
-    row_errors += 1
 
     return
 
@@ -223,6 +222,40 @@ if __name__ == "__main__":
 
                 interpolate_row(data_row)
 
+                #
+                # Create a new Dict with the columns from csv_columns and create csv file from new Dict
+                #
+                csv_dict = {}
+
+                total_time = 0
+                for field_name in csv_columns:
+                    try:
+                        field_value = clean_str( str(data_row[field_name]) )
+                        if '1displayed' == field_name or '2deviceready' == field_name or '3fully_drawn' == field_name:
+                            total_time += int(data_row[field_name])
+                    except KeyError: # KeyError when field_name does not exists 
+                        field_value = ''
+
+                    csv_dict[field_name] = field_value
+
+                csv_dict['total_time'] = total_time
+
+
+                #
+                # Check if counted correctly in csv_dict
+                #
+                check_columns = ['1displayed', '2deviceready', '3fully_splitted', '4login_time', '5backend_time']
+                for field_name in check_columns:
+                    if csv_dict[field_name] == '':
+                        csv_dict[field_name] = 0
+                sum = (int(csv_dict['1displayed']) + int(csv_dict['2deviceready']) + int(csv_dict['3fully_splitted']) + int(csv_dict['4login_time']) + int(csv_dict['5backend_time']))
+                if (int(csv_dict['total_time']) != sum ):
+                    print('Failed sum for ', csv_dict['app_name'], '|   tot=', csv_dict['total_time'],'    sum=', sum)
+
+                csv_dict['unique'] = unique_key
+                unique_key += 1
+                writer.writerow(csv_dict)
+
                 #   Count 
                 if data_row['app_name'].ljust(20) in count:
                     count[data_row['app_name'].ljust(20)] += 1
@@ -230,46 +263,13 @@ if __name__ == "__main__":
                     count[data_row['app_name'].ljust(20)] = 1
 
             except KeyError as e:
-                count_errors(data_row, count_errors, e)
+                count_errors(data_row, unique_key, row_errors, e)
+                row_errors += 1
+
 
             except Exception as e:
                 print(e)
                 traceback.print_exc()
-            
-
-            #
-            # Create a new Dict with the columns from csv_columns and create csv file from new Dict
-            #
-            csv_dict = {}
-
-            total_time = 0
-            for field_name in csv_columns:
-                try:
-                    field_value = clean_str( str(data_row[field_name]) )
-                    if '1displayed' == field_name or '2deviceready' == field_name or '3fully_drawn' == field_name:
-                        total_time += int(data_row[field_name])
-                except KeyError: # KeyError when field_name does not exists 
-                    field_value = ''
-
-                csv_dict[field_name] = field_value
-
-            csv_dict['total_time'] = total_time
-
-
-            #
-            # Check if counted correctly in csv_dict
-            #
-            check_columns = ['1displayed', '2deviceready', '3fully_splitted', '4login_time', '5backend_time']
-            for field_name in check_columns:
-                if csv_dict[field_name] == '':
-                    csv_dict[field_name] = 0
-            sum = (int(csv_dict['1displayed']) + int(csv_dict['2deviceready']) + int(csv_dict['3fully_splitted']) + int(csv_dict['4login_time']) + int(csv_dict['5backend_time']))
-            if (int(csv_dict['total_time']) != sum ):
-                print('Failed sum for ', csv_dict['app_name'], '|   tot=', csv_dict['total_time'],'    sum=', sum)
-
-            csv_dict['unique'] = unique_key
-            unique_key += 1
-            writer.writerow(csv_dict)
 
 #
 # Display result
@@ -296,4 +296,3 @@ if __name__ == "__main__":
     print('----------------------------|')
     print('----------------------------|')
 
-    print(dict_data[1803])
