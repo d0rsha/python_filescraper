@@ -256,6 +256,8 @@ def parse_file(filepath):
                         process_print(line)
                         process_print(e)
                         traceback.print_exc()
+
+                
     except Exception as e:
         process_print('_________/!\\ Probbly error Opening file /!\\_________')
         process_print(e)
@@ -361,31 +363,7 @@ def parse_line(line, device):
             # Add from current format=device: MemoryUsage {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
             for item in attributes:
                 device[ clean( item.split(':')[0] ) ] = clean( item.split(':')[1].split(".")[0] )
-        #
-        #    Specific to Boende Appen 
-        #
-        # checkBackendVersionIsActive
-        # elif re.search("checkBackendVersionIsActive", line):
-        #     if not 'timer_backend' in device:
-        #         device['timer_backend'] = int(line.split("checkBackendVersionIsActive:")[1].split("ms")[0].split(".")[0])
-        #         device['timer_backend_count'] = 1
-        #     else:
-        #         device['timer_backend_count'] += 1
-        # # storage.get('loginToken')
-        # elif re.search("get\('loginToken'\)", line):
-        #     if not 'timer_storage' in device:
-        #         device['timer_storage'] = int(line.split("storage.get('loginToken'):")[1].split("ms")[0].split(".")[0])
-        #         device['timer_storage_count'] = 1
-        #     else:
-        #         device['timer_storage_count'] += 1
-        # # loginService.login()->browser.on('loadstop')
-        # elif re.search("loginService.login", line):
-        #     if not 'timer_loginservice' in device:
-        #         device['timer_loginservice'] = int(line.split("->browser.on('loadstop'):")[1].split("ms")[0].split(".")[0])
-        #         device['timer_loginservice_count'] = 1
-        #     else:
-        #         device['timer_loginservice_count'] += 1
-        
+
         #  login_time
         elif re.search("login_time", line):
             if not "4login_time" in device:
@@ -402,7 +380,10 @@ def parse_line(line, device):
                     device[ '5backend_time' ] = clean( item.split(':')[1].split("ms")[0].split(".")[0] )
                 except Exception as e:
                     print_shit(e)
-        
+
+    elif "FATAL EXCEPTION" in line:
+        device['fatal_error'] = True
+
     return device
 
 
@@ -443,8 +424,10 @@ if __name__ == "__main__":
     # All exisisting keys in dict =
     # ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova_version', ' source', 'model','deviceready','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count','cordova_timing']
     
+    print_columns = [ 'app_name','1displayed','2deviceready','3fully_drawn', 'model',   'manufacturer']
+
     tmp = "Parse error, removing row: "
-    for field_name in csv_columns:
+    for field_name in print_columns:
         COL_SIZE = int(len(field_name))
         tmp += str(clean( str(field_name[-COL_SIZE:]) )).ljust(COL_SIZE) + ", "
     print(tmp)
@@ -546,6 +529,9 @@ if __name__ == "__main__":
                     else:
                         data_row['sdk-version'] = 'null'
 
+                if '18' in data_row['sdk-version'] or '19' in data_row['sdk-version']:
+                    break
+
                 #
                 #    Interpolate with 100% confidence: Add approach to old result that are missing those outputs to log
                 #
@@ -565,13 +551,14 @@ if __name__ == "__main__":
 
             except (KeyError) as e:
                 tmp = "Parse error, removing row" + str(unique_key + row_errors).rjust(3) + ": "
-                for field_name in csv_columns:
+                for field_name in print_columns:
                     try:
                         COL_SIZE = int(len(field_name))
                         tmp += str(clean( str(data_row[field_name][-COL_SIZE:]) )).ljust(COL_SIZE) + ", "
                     except (KeyError, IndexError, TypeError) as e: # KeyError when field_name does not exists 
                         tmp += "''".ljust(COL_SIZE) + ", "
                 print(tmp)
+                print(e)
                 
                 row_errors += 1
 
@@ -594,15 +581,8 @@ if __name__ == "__main__":
             for field_name in csv_columns:
                 try:
                     field_value = clean( str(data_row[field_name]) )
-
-                    """ 
-                    >>>> TMP >>>>> 
-                    """
                     if '1displayed' == field_name or '2deviceready' == field_name or '3fully_drawn' == field_name:
                         total_time += int(data_row[field_name])
-                    """
-                    <<<< TMP <<<<< 
-                    """
 
                 except KeyError: # KeyError when field_name does not exists 
                     field_value = ''
