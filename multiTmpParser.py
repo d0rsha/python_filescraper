@@ -263,25 +263,24 @@ def parse_line(line, device):
     """
         Android specific 
     """
-    if "vityMana" in line:
-        ## Displayed
-        if "Displayed" in line:
-            if re.search("ActivityManager(.*)Displayed(.*)\.MainActivity", line):
+    def parse_timestamp(searchName, attribute, regPattern, line):
+        if re.search(regPattern, line):
                 if "(total" not in line:
-                    device['displayed'] = timestamp_to_ms(line.split("MainActivity: +")[1])
+                    device[attribute] = timestamp_to_ms(line.split("MainActivity: +")[1])
                 else:
-                    device['displayed'] = timestamp_to_ms(line.split("MainActivity: +")[1].split("total")[0])
-                    device['displayed_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])    
-                device['app_name']  = line.split("Displayed ")[1].split("/.MainActivity")[0]
+                    device[attribute] = timestamp_to_ms(line.split("MainActivity: +")[1].split("total")[0])
+                    device[attribute + '_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])    
+                device['app_name']  = line.split(searchName)[1].split("/.MainActivity")[0]
 
-        # Fully Drawn 
-        elif re.search("Fully drawn", line):
-            if "(total" not in line:          
-                device['fully_drawn'] = timestamp_to_ms(line.split("Fully drawn")[1].split(":")[1])
-            else:
-                device['fully_drawn'] = timestamp_to_ms(line.split("MainActivity: +")[1].split("total")[0])
-                device['fully_drawn_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])
-                
+    #
+    # Displayed, Fully drawn && app_name
+    #
+    if "ActivityManager" in line:
+        if "Displayed" in line:
+            parse_timestamp('Displayed ', 'displayed', "ActivityManager(.*)Displayed(.*)\.MainActivity", line)
+        elif "Fully drawn":
+            parse_timestamp('Fully drawn ', 'fully_drawn', "ActivityManager(.*)Fully drawn(.*)\.MainActivity", line)
+
     #
     #    Device 
     #
@@ -543,18 +542,20 @@ if __name__ == "__main__":
                     field_value = clean( str(data_row[field_name]) )
                     if '1displayed' == field_name or '2deviceready' == field_name or '3fully_drawn' == field_name:
                         total_time += int(data_row[field_name])
-
                 except KeyError: # KeyError when field_name does not exists 
                     field_value = ''
-
                 # If all ok: Add to dict 
                 csv_dict[field_name] = field_value
 
             csv_dict['total_time'] = total_time
 
+
+            #
+            # Check if counted correctly in csv_dict
+            #
             check_columns = ['1displayed', '2deviceready', '3fully_splitted', '4login_time', '5backend_time']
             for field_name in check_columns:
-                if field_name == '':
+                if csv_dict[field_name] == '':
                     csv_dict[field_name] = 0
             sum = (int(csv_dict['1displayed']) + int(csv_dict['2deviceready']) + int(csv_dict['3fully_splitted']) + int(csv_dict['4login_time']) + int(csv_dict['5backend_time']))
             if (int(csv_dict['total_time']) != sum ):
