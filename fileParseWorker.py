@@ -108,12 +108,14 @@ class myThread (threading.Thread):
                 # Get lock to synchronize threads
                 self.local_tests.insert(1, dic)
                 self.counter += 1
-                process_print ("[",str(self.tid).rjust(4),"] File:",str(self.counter).rjust(4),"/",str(len(self.workload)).rjust(4), " -> ", entry)
+                if self.counter % 15 == 0:
+                    process_print ("[",str(self.tid).rjust(4),"] File:",str(self.counter).rjust(4),"/",str(len(self.workload)).rjust(4), " -> ", entry)
                 # Free lock to release next thread
             
             globalLock.acquire()
             tests.extend(self.local_tests)
             globalLock.release()
+            process_print ("[",str(self.tid).rjust(4)," Finished ]") 
 #
 # END MULTI stuff
 #
@@ -218,6 +220,7 @@ def parse_file(filepath):
                     break
                 for line in lines:
                     try:
+                        # TODO: Felsök parse_line ...
                         device = parse_line(line, device)
                         linenumber += 1
                     except Exception as e:
@@ -236,28 +239,28 @@ def parse_file(filepath):
     #process_print(device)
     return device
 
+def parse_timestamp(searchName, attribute, regPattern, line, dev):
+    if re.search(regPattern, line):
+        if "(total" not in line:
+            dev[attribute] = timestamp_to_ms(line.split("MainActivity: +")[1])
+        else:
+            dev[attribute] = timestamp_to_ms(line.split("MainActivity: +")[1].split("total")[0])
+            dev[attribute + '_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])    
+        dev['app_name']  = line.split(searchName)[1].split("/.MainActivity")[0]
+
 
 def parse_line(line, device):
     """
         Android specific 
     """
-    def parse_timestamp(searchName, attribute, regPattern, line):
-        if re.search(regPattern, line):
-                if "(total" not in line:
-                    device[attribute] = timestamp_to_ms(line.split("MainActivity: +")[1])
-                else:
-                    device[attribute] = timestamp_to_ms(line.split("MainActivity: +")[1].split("total")[0])
-                    device[attribute + '_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])    
-                device['app_name']  = line.split(searchName)[1].split("/.MainActivity")[0]
-
     #
     # Displayed, Fully drawn && app_name
     #
     if "ActivityManager" in line:
         if "Displayed" in line:
-            parse_timestamp('Displayed ', 'displayed', "ActivityManager(.*)Displayed(.*)\.MainActivity", line)
+            parse_timestamp('Displayed ', 'displayed', "ActivityManager(.*)Displayed(.*)\.MainActivity", line, device)
         elif "Fully drawn":
-            parse_timestamp('Fully drawn ', 'fully_drawn', "ActivityManager(.*)Fully drawn(.*)\.MainActivity", line)
+            parse_timestamp('Fully drawn ', 'fully_drawn', "ActivityManager(.*)Fully drawn(.*)\.MainActivity", line, device)
 
     #
     #    Device 
@@ -265,6 +268,7 @@ def parse_line(line, device):
     elif "device:" in line:
         if not "evaluateJavascript" in line:
             if re.search("device: Device", line):
+                device['plugin_loaded'] = True
                 attributes = line.split('{')[1].split(',')
                 # Add from current format=device: Device {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
                 for item in attributes:
@@ -294,6 +298,7 @@ def parse_line(line, device):
         # Ionic Native: Problem 
         elif re.search("deviceready has not fired after 5 seconds", line):
             device['deviceready_error'] = "true"  
+            
     
     #
     #    Specific Chrome console output !WARNING! ( NOT ALWAYS IN LOG OUTPUT )

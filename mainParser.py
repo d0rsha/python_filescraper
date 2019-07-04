@@ -25,6 +25,8 @@ global fail_count_fatal_error
 fail_count_fatal_error = {}
 global fail_count_deviceready
 fail_count_deviceready = {}
+global fail_count_plugin
+fail_count_plugin = {}
 
 
 def calculate_deltider(data_row):
@@ -112,27 +114,17 @@ def interpolate_row(data_row):
     #   Add 'fatal_exception' flag to failed tests 
     if "fatal_exception" in data_row:
         raise KeyError('fatal')
-    
+    #   Add 'fatal_exception' flag to failed tests 
+    if "deviceready_error" in data_row:
+        raise KeyError('devRdy_err')
+    #   Add plugin check 
+    if not "plugin_loaded" in data_row:
+        raise KeyError('plugin')
+
     return
 
 
-def count_errors(data_row, unique_key, errors, exception):
-    t1 = 'KeyError: ' + str(exception).ljust(13) 
-    tmp = str(unique_key + errors).rjust(3) + ": "
-    for field_name in print_columns:
-        try:
-            COL_SIZE = int(len(field_name))
-            tmp += str(clean_str( str(data_row[field_name][-COL_SIZE:]) )).ljust(COL_SIZE) + ", "
-        except (KeyError, IndexError, TypeError) as e: # KeyError when field_name does not exists 
-            tmp += "''".ljust(COL_SIZE) + ", "
-
-    tmp += t1
-    if "fatal_exception" in data_row:
-        tmp += " FATAL EXCEPT"
-    else:
-        tmp += "             "
-    tmp += ' ' + data_row['filepath']
-    print(tmp)
+def count_errors(data_row):
     #
     # Count different type of errors 
     inc_error_count(fail_count, data_row)
@@ -140,6 +132,8 @@ def count_errors(data_row, unique_key, errors, exception):
         inc_error_count(fail_count_deviceready, data_row)
     if "fatal_exception" in data_row:
         inc_error_count(fail_count_fatal_error, data_row)
+    if not "plugin_loaded" in data_row:
+        inc_error_count(fail_count_plugin, data_row)
 
     return
 
@@ -177,7 +171,7 @@ if __name__ == "__main__":
 
     # pprint.pprint(result)
     print("---------------")
-    # print(dict_data)
+    pprint.pprint(dict_data)
     print("Length of result == ", len(dict_data))
     print("---------------")
 
@@ -194,7 +188,7 @@ if __name__ == "__main__":
                     # 'timer_loginservice','timer_loginservice_count',
                     '3fully_splitted', '4login_time', '5backend_time'
                   ] 
-    print_columns = [ 'app_name','displayed','deviceready','fully_drawn', 'model', 'manufacturer', 'serial']
+    print_columns = [ 'app_name','displayed','2deviceready','fully_drawn', 'model', 'manufacturer', 'sdk-version']
     
     #
     # Print header
@@ -262,8 +256,32 @@ if __name__ == "__main__":
                 else:  
                     count[data_row['app_name'].ljust(20)] = 1
 
-            except KeyError as e:
-                count_errors(data_row, unique_key, row_errors, e)
+            except KeyError as exception:
+                t1 = 'KeyError: ' + str(exception).ljust(13) 
+                tmp = str(unique_key + row_errors).rjust(3) + ": "
+                for field_name in print_columns:
+                    try:
+                        COL_SIZE = int(len(field_name))
+                        if field_name == 'app_name' or field_name == 'model' or field_name == 'manufacturer':
+                            tmp += str(clean_str( str(data_row[field_name][-COL_SIZE:]) )).ljust(COL_SIZE) + ", "
+                        else:
+                            tmp += str(clean_str( str(data_row[field_name]) )).ljust(COL_SIZE) + ", "                            
+                    except (KeyError, IndexError, TypeError) as e: # KeyError when field_name does not exists 
+                        tmp += "''".ljust(COL_SIZE) + ", "
+
+                tmp += t1
+                if "fatal_exception" in data_row:
+                    tmp += " FATAL EXCEPT"
+                elif "plugin_loaded" in data_row:
+                    tmp += " PLUGIN ERROR"
+                elif "deviceready_error" in data_row:
+                    tmp += " CORD ERROR  "
+                else:
+                    tmp += "             "
+                tmp += ' ' + data_row['filepath']
+                print(tmp)
+
+                count_errors(data_row)
                 row_errors += 1
 
 
@@ -286,13 +304,16 @@ if __name__ == "__main__":
     print('___# erased rows per app____|')
     print('____________________________|')
     pprint.pprint(fail_count)
-    print('             of total : ', row_errors,'|')
+    print('           of total : ', row_errors,'|')
     print('                            |')
     print(' of which is FATAL ERRORS   |')
     pprint.pprint(fail_count_fatal_error)
     print('                            |')
     print(' and of which is deviceready|')
     pprint.pprint(fail_count_deviceready)
+    print('                            |')
+    print(' and of which is PLUGIN ERR |')
+    pprint.pprint(fail_count_plugin)
     print('----------------------------|')
     print('----------------------------|')
 
