@@ -28,6 +28,9 @@ PROFFESORS = 20
 
 global tests 
 tests= []
+global progress
+progress = 0
+
 
 def process_print(*argv):  
     """
@@ -41,11 +44,11 @@ def process_print(*argv):
         print_me = ''
         for arg in argv:  
             print_me += str(arg)
-        print('<', pid.ljust(4), '> ', print_me)
+        print('<PID:', pid.ljust(2), '> ', print_me)
     except Exception as e:
         print(e)
         traceback.print_exc()
-        print('<', str(current_process()), '> ', argv)
+        print('<PID:', str(current_process()), '> ', argv)
 
     
 
@@ -108,14 +111,32 @@ class myThread (threading.Thread):
                 # Get lock to synchronize threads
                 self.local_tests.insert(1, dic)
                 self.counter += 1
-                if self.counter % 15 == 0:
-                    process_print ("[",str(self.tid).rjust(4),"] File:",str(self.counter).rjust(4),"/",str(len(self.workload)).rjust(4), " -> ", entry)
-                # Free lock to release next thread
+                
+                if self.counter % (len(self.workload) / 4) == 0:
+                    
+                    # process_print ("[",str(self.tid).rjust(4),"] File:",str(self.counter).rjust(4),"/",str(len(self.workload)).rjust(4), " -> ", entry)
+                    globalLock.acquire()
+                    global progress
+                    progress += (len(self.workload) / 4)
+                    prog_bar = progress
+                    globalLock.release()
+
+                    prog_bar = prog_bar / (len(self.workload) * THREADS)
+                    prog_bar = int(prog_bar * 100.0)
+                    process_print ("Progress:", '#'.ljust( prog_bar, '#'),'>',prog_bar,' %')
             
+            # Free lock to release next thread
             globalLock.acquire()
             tests.extend(self.local_tests)
+            #global progress
+            #progress += self.counter
+            #prog_bar = progress
             globalLock.release()
-            process_print ("[",str(self.tid).rjust(4)," Finished ]") 
+
+            #prog_bar = prog_bar / len(self.workload) * THREADS
+            #process_print ("[",str(self.tid).rjust(4),"] Progress:", '#'.ljust( int(prog_bar * 50.0), '#'),'>')
+            
+            #process_print ("[",str(self.tid).rjust(4)," Finished ]") 
 #
 # END MULTI stuff
 #

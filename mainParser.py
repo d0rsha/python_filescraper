@@ -114,12 +114,12 @@ def interpolate_row(data_row):
     #   Add 'fatal_exception' flag to failed tests 
     if "fatal_exception" in data_row:
         raise KeyError('fatal')
-    #   Add 'fatal_exception' flag to failed tests 
-    if "deviceready_error" in data_row:
-        raise KeyError('devRdy_err')
     #   Add plugin check 
-    if not "plugin_loaded" in data_row:
+    elif not "plugin_loaded" in data_row:
         raise KeyError('plugin')
+        #   Add 'fatal_exception' flag to failed tests 
+    elif "deviceready_error" in data_row:
+        raise KeyError('devRdy_err')
 
     return
 
@@ -128,12 +128,12 @@ def count_errors(data_row):
     #
     # Count different type of errors 
     inc_error_count(fail_count, data_row)
-    if "deviceready_error" in data_row:
-        inc_error_count(fail_count_deviceready, data_row)
     if "fatal_exception" in data_row:
         inc_error_count(fail_count_fatal_error, data_row)
-    if not "plugin_loaded" in data_row:
+    elif not "plugin_loaded" in data_row:
         inc_error_count(fail_count_plugin, data_row)
+    elif "deviceready_error" in data_row:
+        inc_error_count(fail_count_deviceready, data_row)
 
     return
 
@@ -272,10 +272,10 @@ if __name__ == "__main__":
                 tmp += t1
                 if "fatal_exception" in data_row:
                     tmp += " FATAL EXCEPT"
-                elif "plugin_loaded" in data_row:
+                elif not "plugin_loaded" in data_row:
                     tmp += " PLUGIN ERROR"
                 elif "deviceready_error" in data_row:
-                    tmp += " CORD ERROR  "
+                    tmp += " CORDOV ERROR"
                 else:
                     tmp += "             "
                 tmp += ' ' + data_row['filepath']
@@ -309,11 +309,11 @@ if __name__ == "__main__":
     print(' of which is FATAL ERRORS   |')
     pprint.pprint(fail_count_fatal_error)
     print('                            |')
-    print(' and of which is deviceready|')
-    pprint.pprint(fail_count_deviceready)
-    print('                            |')
     print(' and of which is PLUGIN ERR |')
     pprint.pprint(fail_count_plugin)
+    print('                            |')
+    print(' and of which is CORDOVA ERR|')
+    pprint.pprint(fail_count_deviceready)
     print('----------------------------|')
     print('----------------------------|')
 
