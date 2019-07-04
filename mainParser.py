@@ -62,16 +62,6 @@ def interpolate_row(data_row):
     """
         Interpolate app_name; sdk-version; approach
     """
-
-    #    Rename / Give app nickname
-    data_row['app_name'] = re.sub('com.avrethem.', '', data_row['app_name'])
-    data_row['app_name'] = re.sub('com.ionicframework.', '', data_row['app_name'])
-    # data_row['app_name'] = re.sub('android.', 'droid', data_row['app_name'])
-    # data_row['app_name'] = re.sub('app', '', data_row['app_name'])
-    data_row['app_name'] = re.sub('se.solutionxperts.', '', data_row['app_name'])
-    data_row['app_name'] = re.sub('.stangastaden', '', data_row['app_name'])
-    data_row['app_name'] = re.sub('xom.xwalk.browser', 'plugins.xwalk', data_row['app_name'])
-    
     if 'cordova_version' in data_row:
         data_row['cordova'] = data_row['cordova_version']
 
@@ -171,7 +161,7 @@ if __name__ == "__main__":
 
     # pprint.pprint(result)
     print("---------------")
-    pprint.pprint(dict_data)
+    #pprint.pprint(dict_data)
     print("Length of result == ", len(dict_data))
     print("---------------")
 
@@ -212,6 +202,20 @@ if __name__ == "__main__":
         fail_count_fatal_error[''.ljust(20)] = 0
         for data_row in dict_data:
             try:
+                #    Rename / Give app nickname
+                data_row['app_name'] = re.sub('exjobb.', '', data_row['app_name'])
+                data_row['app_name'] = re.sub('.blankapp', '', data_row['app_name'])
+
+                data_row['app_name'] = re.sub('com.avrethem.', '', data_row['app_name'])
+                data_row['app_name'] = re.sub('com.ionicframework.', '', data_row['app_name'])
+                data_row['app_name'] = re.sub('se.solutionxperts.', '', data_row['app_name'])
+                data_row['app_name'] = re.sub('.stangastaden', '', data_row['app_name'])
+                data_row['app_name'] = re.sub('xom.xwalk.browser', 'plugins.xwalk', data_row['app_name'])
+                # Skip old tests
+                if 'boendeapp' in data_row['app_name'] or 'appen2' in data_row['app_name'] or 'conferenc' in data_row['app_name'] or 'dialer' in data_row['app_name']:
+                   continue
+
+                
                 calculate_deltider(data_row)
 
                 interpolate_row(data_row)
@@ -309,10 +313,10 @@ if __name__ == "__main__":
     print(' of which is FATAL ERRORS   |')
     pprint.pprint(fail_count_fatal_error)
     print('                            |')
-    print(' and of which is PLUGIN ERR |')
+    print(' of which is PLUGIN ERR     |')
     pprint.pprint(fail_count_plugin)
     print('                            |')
-    print(' and of which is CORDOVA ERR|')
+    print(' of which is CORDOVA ERR    |')
     pprint.pprint(fail_count_deviceready)
     print('----------------------------|')
     print('----------------------------|')

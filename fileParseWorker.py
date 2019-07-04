@@ -11,11 +11,9 @@ import re
 import threading
 import time
 
-# Threads per process!!
 THREADS = 2
 globalLock = threading.Lock()
 threads = []
-filenumber = 0
 
 ###
 ### MULTIPROCESSING
@@ -26,6 +24,9 @@ from multiprocessing import current_process
 
 PROFFESORS = 20
 
+###
+### Process Global variables 
+###
 global tests 
 tests= []
 global progress
@@ -88,7 +89,7 @@ def multi_processing_compute(a_list):
     chunks = [a_list[i::PROFFESORS] for i in range(PROFFESORS)] 
     pool = Pool(processes=PROFFESORS)
 
-    # launching multiple evaluations asynchronously *may* use more processes
+    # launching multiple evaluations asynchronously <may> use addtiontional processes
     multiple_results = [pool.apply_async(multi_threading_compute, [chunks[i]]) for i in range(PROFFESORS)]
     # print ([res.get(timeout=180) for res in multiple_results])
     return [res.get(timeout=720) for res in multiple_results]
@@ -113,8 +114,6 @@ class myThread (threading.Thread):
                 self.counter += 1
                 
                 if self.counter % (len(self.workload) / 4) == 0:
-                    
-                    # process_print ("[",str(self.tid).rjust(4),"] File:",str(self.counter).rjust(4),"/",str(len(self.workload)).rjust(4), " -> ", entry)
                     globalLock.acquire()
                     global progress
                     progress += (len(self.workload) / 4)
@@ -128,15 +127,7 @@ class myThread (threading.Thread):
             # Free lock to release next thread
             globalLock.acquire()
             tests.extend(self.local_tests)
-            #global progress
-            #progress += self.counter
-            #prog_bar = progress
             globalLock.release()
-
-            #prog_bar = prog_bar / len(self.workload) * THREADS
-            #process_print ("[",str(self.tid).rjust(4),"] Progress:", '#'.ljust( int(prog_bar * 50.0), '#'),'>')
-            
-            #process_print ("[",str(self.tid).rjust(4)," Finished ]") 
 #
 # END MULTI stuff
 #
