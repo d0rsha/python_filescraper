@@ -212,9 +212,9 @@ if __name__ == "__main__":
                 data_row['app_name'] = re.sub('com.ionicframework.', '', data_row['app_name'])
                 data_row['app_name'] = re.sub('se.solutionxperts.', '', data_row['app_name'])
                 data_row['app_name'] = re.sub('.stangastaden', '', data_row['app_name'])
-                data_row['app_name'] = re.sub('xom.xwalk.browser', 'plugins.xwalk', data_row['app_name'])
+                #data_row['app_name'] = re.sub('xom.xwalk.browser', 'plugins.xwalk', data_row['app_name'])
                 # Skip old tests
-                if 'boendeapp' in data_row['app_name'] or 'appen2' in data_row['app_name'] or 'conferenc' in data_row['app_name'] or 'dialer' in data_row['app_name']:
+                if 'plugins' in data_row['app_name'] or 'minimal' in data_row['app_name'] or 'xom.xwalk.browser'in data_row['app_name'] or 'boendeapp' in data_row['app_name'] or 'appen2' in data_row['app_name'] or 'conferenc' in data_row['app_name'] or 'dialer' in data_row['app_name']:
                    continue
 
                 if 'API19' in data_row:
