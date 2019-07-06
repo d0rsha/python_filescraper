@@ -204,7 +204,9 @@ if __name__ == "__main__":
             try:
                 #    Rename / Give app nickname
                 data_row['app_name'] = re.sub('exjobb.', '', data_row['app_name'])
+                data_row['app_name'] = re.sub('exjob.', '', data_row['app_name'])
                 data_row['app_name'] = re.sub('.blankapp', '', data_row['app_name'])
+                data_row['app_name'] = re.sub('com.example.androidblank', 'android', data_row['app_name'])
 
                 data_row['app_name'] = re.sub('com.avrethem.', '', data_row['app_name'])
                 data_row['app_name'] = re.sub('com.ionicframework.', '', data_row['app_name'])
@@ -215,6 +217,8 @@ if __name__ == "__main__":
                 if 'boendeapp' in data_row['app_name'] or 'appen2' in data_row['app_name'] or 'conferenc' in data_row['app_name'] or 'dialer' in data_row['app_name']:
                    continue
 
+                if 'API19' in data_row:
+                    continue
                 
                 calculate_deltider(data_row)
 

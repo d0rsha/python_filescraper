@@ -67,7 +67,6 @@ def multi_threading_compute(a_list):
     for pid in range(THREADS):
         start = pid * poolsize
         end = start + poolsize
-        process_print(pid,"[", start, ":",end)
         thread = myThread(pid, "Thread-" + str(pid), a_list[start:end])
         thread.start()
         threads.append(thread)
@@ -244,6 +243,40 @@ def parse_file(filepath):
             remove_start = filepath.split('/')[1::1]
             device['filepath'] = '/'.join(remove_start)
 
+            if not 'app_name' in device:
+                artifact_path = 'test-lab-vs5fwd255p258-y231pa7vdj4mx/' + device['filepath'].split('logcat')[0] + 'artifacts/accessibility1.meta'
+                with open(artifact_path, 'rb') as file: 
+                    lines = file.read().decode(errors='replace')
+                    
+                    process_print (artifact_path)
+                    lines = lines.split('\n')
+                    for line in lines:
+                        try:
+                            #process_print(line)
+                            if 'android.blankapp' in line:
+                                device['app_name'] = 'android.blankapp'
+                                break
+                            elif 'com.avrethem.plugins' in line:
+                                device['app_name'] = 'com-avrethem.plugins'
+                                break
+                            elif 'minimal' in line:
+                                device['app_name'] = 'minimal'
+                                break
+                            elif 'plugins.xwalk' in line:
+                                device['app_name'] = 'plugins.xwalk'
+                                break
+                            elif 'appen2.xwalk' in line:
+                                device['app_name'] = 'appen2.xwalk'
+                                break
+                            elif 'boende.xwalk' in line:
+                                device['app_name'] = 'boende.xwalk'
+                                break
+
+                        except Exception as e:
+                            process_print('_________/!\\ artifacts/accessibility1.meta ERROR_________')
+                            process_print(e)
+                    process_print('Found app_name: ', device['app_name'])
+
     except Exception as e:
         process_print('_________/!\\ Probbly error Opening file /!\\_________')
         process_print(e)
@@ -277,7 +310,7 @@ def parse_line(line, device):
     #
     #    Device 
     #
-    elif "device:" in line:
+    elif "device: Device" in line:
         if not "evaluateJavascript" in line:
             if re.search("device: Device", line):
                 device['plugin_loaded'] = True
@@ -332,5 +365,8 @@ def parse_line(line, device):
        
     elif "FATAL EXCEPTION" in line:
         device['fatal_exception'] = True
+
+    elif "UPDATE_DEVICE_STATS" in line and 'fatal_exception' in device:
+        device['API19'] = True
     
     return device
