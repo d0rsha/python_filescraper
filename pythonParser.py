@@ -20,7 +20,12 @@ global count
 count = {}
 global fail_count
 fail_count = {}
-
+global fail_count_fatal_error
+fail_count_fatal_error = {}
+global fail_count_deviceready
+fail_count_deviceready = {}
+global fail_count_plugin
+fail_count_plugin = {}
 
 
 def clean(dirty_string):
@@ -85,6 +90,42 @@ def clean_str(dirty_string):
         Clean string from wierd signs & chars given by regEx
     """
     return re.sub('[+()\n\" ]', '', dirty_string)
+
+
+
+def inc_error_count(dict_obj, data_row):
+    """
+        Help function for recording errors
+        @ dict_object Error counting object 
+    """
+    if 'app_name' in data_row:
+        if data_row['app_name'].ljust(20) in dict_obj:
+            dict_obj[data_row['app_name'].ljust(20)] += 1
+        else:  
+            dict_obj[data_row['app_name'].ljust(20)] = 1
+    else:
+        if ''.ljust(20) in dict_obj:
+            dict_obj[''.ljust(20)] += 1
+        else:
+            dict_obj[''.ljust(20)] = 1
+    return
+
+
+
+def count_errors(data_row):
+    """
+        Helper function
+        Count different type of errors 
+    """
+    inc_error_count(fail_count, data_row)
+    if "fatal_exception" in data_row:
+        inc_error_count(fail_count_fatal_error, data_row)
+    elif not "plugin_loaded" in data_row:
+        inc_error_count(fail_count_plugin, data_row)
+    elif "deviceready_error" in data_row:
+        inc_error_count(fail_count_deviceready, data_row)
+
+    return
 
 
 
@@ -219,10 +260,13 @@ def parse_file(filepath):
                         print(e)
                         traceback.print_exc()
 
-            device['filepath'] = filepath # args.path
-
+            if filepath[-1] == '/':
+                device['filepath'] = filepath # args.path
+            else: 
+                device['filepath'] = filepath + '/'
+                
             if not 'app_name' in device:
-                artifact_path = 'test-lab-vs5fwd255p258-y231pa7vdj4mx/' + device['filepath'].split('logcat')[0] + 'artifacts/accessibility1.meta'
+                artifact_path = args.path + device['filepath'].split('logcat')[0] + 'artifacts/accessibility1.meta'
                 with open(artifact_path, 'rb') as file: 
                     lines = file.read().decode(errors='replace')
                     
@@ -281,16 +325,16 @@ if __name__ == "__main__":
                     'unique','isVirtual', 'approach','app_name', 'serial','uuid', 
                     'model',   'manufacturer', 'platform',
                     'version', 'sdk-version',  'cordova', 
-                     'displayed' , 'deviceready', 'fully_drawn', 'install_time',
+                    'displayed' , 'deviceready', 'fully_drawn', 'install_time',
                     '1displayed','2deviceready','3fully_drawn', 'total_time',
                     # 'backdrop_displayed', 'deviceready_error',
                     # Specific to BoendeAppen
                     # 'timer_backend','timer_backend_count','timer_storage','timer_storage_count',
                     # 'timer_loginservice','timer_loginservice_count',
-                    '3fully_splitted', '4login_time', '5backend_time'
+                    '3fully_splitted', '4login_time', '5backend_time', 'error'
                   ] 
-    # All exisisting keys in dict =
-    # ['app_name', 'serial', 'manufacturer', 'platform', 'version', 'cordova_version', ' source', 'model','deviceready','displayed','displayed_plus_total','fully_drawn','install_time','cordova_start','cordova_loaded','timer_backend','timer_backend_count','timer_storage','timer_storage_count','timer_loginservice','timer_loginservice_count','cordova_timing']
+    print_columns = [ 'app_name','displayed','2deviceready','fully_drawn', 'model', 'manufacturer', 'sdk-version']
+
     
     tmp = "Parse error, removing row: "
     for field_name in csv_columns:
@@ -308,68 +352,69 @@ if __name__ == "__main__":
         unique_key = 0
         row_errors = 0
         fail_count[''.ljust(20)] = 0
+        fail_count_fatal_error[''.ljust(20)] = 0
+        
+         #
+        # Create a new Dict with the columns from csv_columns and create csv file from new Dict
+        #
+        csv_dict = {}
+
+
         for data_row in dict_data:
-
             try:
-                #
-                #    Remove broken tests
-                #
-                if not clean( str(data_row['serial']) ) \
-                or not clean( str(data_row['app_name']) )\
-                or not clean( str(data_row['displayed']) ):
-                    raise KeyError('undefined')
 
-                #
-                #   Remove test with missing 'Fully Drawn' attribute but not for android 
-                #
-                if "android" not in data_row["app_name"]:
-                    if 'fully_drawn' not in data_row:
-                        raise KeyError('Fully drawn not among input')
-                        # Skip if app is not android and do not contain fully_drawn
+                 #    Rename / Give app nickname
+                data_row['app_name'] = re.sub('exjobb.', '', data_row['app_name'])
+                data_row['app_name'] = re.sub('exjob.', '', data_row['app_name'])
+                data_row['app_name'] = re.sub('.blankapp', '', data_row['app_name'])
+                data_row['app_name'] = re.sub('com.example.androidblank', 'android', data_row['app_name'])
 
-                #
-                #    Rename / Give app nickname
-                #
                 data_row['app_name'] = re.sub('com.avrethem.', '', data_row['app_name'])
                 data_row['app_name'] = re.sub('com.ionicframework.', '', data_row['app_name'])
-                # data_row['app_name'] = re.sub('android.', 'droid', data_row['app_name'])
-                # data_row['app_name'] = re.sub('app', '', data_row['app_name'])
                 data_row['app_name'] = re.sub('se.solutionxperts.', '', data_row['app_name'])
                 data_row['app_name'] = re.sub('.stangastaden', '', data_row['app_name'])
-                data_row['app_name'] = re.sub('xom.xwalk.browser', 'plugins.xwalk', data_row['app_name'])
+                #data_row['app_name'] = re.sub('xom.xwalk.browser', 'plugins.xwalk', data_row['app_name'])
+                # Skip old tests
+                if 'minimal' in data_row['app_name'] or 'xom.xwalk.browser'in data_row['app_name'] or 'boendeapp' in data_row['app_name'] or 'appen2' in data_row['app_name'] or 'conferenc' in data_row['app_name'] or 'dialer' in data_row['app_name']:
+                   continue
+
+                if 'API19' in data_row:
+                    continue
+
+
+                #
+                #    Fix 'deltider' : 1displayed, 2deviceready, 3fully_drawn, 4login_time, 5backend_time  
+                #
+                data_row['1displayed'] = data_row['displayed']
+                if 'deviceready' in data_row:
+                    data_row['2deviceready'] = data_row['deviceready']
+                    data_row['deviceready'] = int(data_row['displayed']) + int(data_row['deviceready'])
+
+                if "android" not in data_row["app_name"]:
+                    data_row['3fully_drawn'] = data_row['fully_drawn'] - data_row['deviceready']
                 
-                
-                
+                    if '4login_time' in data_row:
+                        ## 3fully splitted before 
+                        data_row['3fully_splitted'] = int(data_row['3fully_drawn']) - int(data_row['4login_time'])
+                        if '5backend_time' in data_row:
+                            ## 4login-time
+                            data_row['4login_time'] = int(data_row['4login_time']) - int(data_row['5backend_time'])
+                            ## 5backend-time
+                            data_row['5backend_time'] = int(data_row['5backend_time'])
+                        else:
+                            data_row['5backend_time'] = 0
+                    else:
+                        data_row['3fully_splitted'] = int(data_row['3fully_drawn'])
+                        data_row['4login_time'] = 0 
+                        data_row['5backend_time'] = 0
+
+                #
+                #    Interpolate app_name; sdk-version; approach
+                #
                 if 'cordova_version' in data_row:
                     data_row['cordova'] = data_row['cordova_version']
 
-                
-                # Sort Values by deltider 
-                # deviceready is total time until device is ready from start 
-                # 2deviceready is time it took for framework to load 
-                if 'displayed' in data_row:
-                    data_row['1displayed'] = data_row['displayed']
-                    if 'deviceready' in data_row:
-                        data_row['2deviceready'] = data_row['deviceready']
-                        data_row['deviceready'] = int(data_row['displayed']) + int(data_row['deviceready'])
-                if 'fully_drawn' in data_row:
-                    data_row['3fully_drawn'] = data_row['fully_drawn'] - data_row['deviceready']
-                
-                    if '4login_time' in data_row and '5backend_time' in data_row:
-                        ## 3fully splitted before 
-                        data_row['3fully_splitted'] = int(data_row['3fully_drawn']) - int(data_row['4login_time'])
-                        ## 4login-time
-                        data_row['4login_time'] = int(data_row['4login_time']) - int(data_row['5backend_time'])
-                        ## 5backend-time
-                        data_row['5backend_time'] = int(data_row['5backend_time'])
-
-                    else:
-                        data_row['3fully_splitted'] = int(data_row['3fully_drawn'])
-
-
-                #
-                #    Interpolate with 99 % confidence: Add API-level for Android-rows that are mssing sdk-version
-                #
+                #    Add API-level for Android-rows that are mssing sdk-version
                 if not 'sdk-version' in data_row:
                     if '4.3' in data_row['version']:
                         data_row['sdk-version'] = '18'
@@ -393,92 +438,139 @@ if __name__ == "__main__":
                         data_row['sdk-version'] = '28'
                     else:
                         data_row['sdk-version'] = 'null'
+                
+                #   Remove tests with API 18 && 19 
+                if '18' in data_row['sdk-version'] or '19' in data_row['sdk-version']:
+                    raise KeyError('API 18/19')
 
-                #
-                #    Interpolate with 100% confidence: Add approach to old tests that are missing those outputs to log
-                #
+                #   Add approach to old result that are missing those outputs to log
                 if not 'approach' in data_row:
                     if 'cordova' in data_row:
                         data_row['approach'] = 'hybrid'
                     else:
                         data_row['approach'] = 'native'
 
-                # 
+                #   Add 'fatal_exception' flag to failed tests 
+                if "fatal_exception" in data_row:
+                    raise KeyError('fatal')
+                #   Add plugin check 
+                elif not "plugin_loaded" in data_row:
+                    raise KeyError('plugin')
+                    #   Add 'fatal_exception' flag to failed tests 
+                elif "deviceready_error" in data_row:
+                    raise KeyError('devRdy_err')
+
+               
+
+                total_time = 0
+                for field_name in csv_columns:
+                    try:
+                        field_value = clean_str( str(data_row[field_name]) )
+                        if '1displayed' == field_name or '2deviceready' == field_name or '3fully_drawn' == field_name:
+                            total_time += int(data_row[field_name])
+                    except KeyError: # KeyError when field_name does not exists 
+                        field_value = ''
+
+                    csv_dict[field_name] = field_value
+
+                csv_dict['total_time'] = total_time
+
+
+                #
+                # Check if counted correctly in csv_dict
+                #
+                check_columns = ['1displayed', '2deviceready', '3fully_splitted', '4login_time', '5backend_time']
+                for field_name in check_columns:
+                    if csv_dict[field_name] == '':
+                        csv_dict[field_name] = 0
+                sum = (int(csv_dict['1displayed']) + int(csv_dict['2deviceready']) + int(csv_dict['3fully_splitted']) + int(csv_dict['4login_time']) + int(csv_dict['5backend_time']))
+                if (int(csv_dict['total_time']) != sum ):
+                    print('Failed sum for ', csv_dict['app_name'], '|   tot=', csv_dict['total_time'],'    sum=', sum)
+
+                csv_dict['unique'] = unique_key
+                unique_key += 1
+                writer.writerow(csv_dict)
+
                 #   Count 
-                # 
                 if data_row['app_name'].ljust(20) in count:
                     count[data_row['app_name'].ljust(20)] += 1
                 else:  
                     count[data_row['app_name'].ljust(20)] = 1
 
-            except (KeyError) as e:
-                tmp = "Parse error, removing row" + str(row_errors).rjust(3) + ": "
-                for field_name in csv_columns:
+            except KeyError as exception:
+                t1 = 'KeyError: ' + str(exception).ljust(13) 
+                tmp = str(unique_key + row_errors).rjust(3) + ": "
+                for field_name in print_columns:
                     try:
                         COL_SIZE = int(len(field_name))
-                        tmp += str(clean( str(data_row[field_name][-COL_SIZE:]) )).ljust(COL_SIZE) + ", "
+                        if field_name == 'app_name' or field_name == 'model' or field_name == 'manufacturer':
+                            tmp += str(clean_str( str(data_row[field_name][-COL_SIZE:]) )).ljust(COL_SIZE) + ", "
+                        else:
+                            tmp += str(clean_str( str(data_row[field_name]) )).ljust(COL_SIZE) + ", "                            
                     except (KeyError, IndexError, TypeError) as e: # KeyError when field_name does not exists 
                         tmp += "''".ljust(COL_SIZE) + ", "
+
+                tmp += t1
+                error = ''
+                if "fatal_exception" in data_row:
+                    error += " FATAL EXCEPT"
+                elif not "plugin_loaded" in data_row:
+                    error += " PLUGIN ERROR"
+                elif "deviceready_error" in data_row:
+                    error += " CORDOV ERROR"
+                else:
+                    error += "             "
+                data_row['error'] = error
+                tmp += error
+                tmp += ' ' + data_row['filepath']
                 print(tmp)
-                
+
+                count_errors(data_row)
                 row_errors += 1
 
-                if 'app_name' in data_row:
-                    if data_row['app_name'].ljust(20) in fail_count:
-                        fail_count[data_row['app_name'].ljust(20)] += 1
-                    else:  
-                        fail_count[data_row['app_name'].ljust(20)] = 1
-                else:
-                    fail_count[''.ljust(20)] += 1
-                continue
-            
+                total_time = 0
+                for field_name in csv_columns:
+                    try:
+                        field_value = clean_str( str(data_row[field_name]) )
+                        if '1displayed' == field_name or '2deviceready' == field_name or '3fully_drawn' == field_name:
+                            total_time += int(data_row[field_name])
+                    except KeyError: # KeyError when field_name does not exists 
+                        field_value = ''
 
-            #
-            # Create a new Dict with the columns from csv_columns and create csv file from new Dict
-            #
-            csv_dict = {}
+                    csv_dict[field_name] = field_value
 
-            total_time = 0
-            for field_name in csv_columns:
-                try:
-                    field_value = clean( str(data_row[field_name]) )
+                csv_dict['unique'] = unique_key
+                unique_key += 1
+                writer.writerow(csv_dict)
 
-                    """ 
-                    >>>> TMP >>>> 
-                    """
-                    if '1displayed' == field_name or '2deviceready' == field_name or '3fully_drawn' == field_name:
-                        total_time += int(data_row[field_name])
-                    """
-                    <<<< TMP <<<< 
-                    """
+            except Exception as e:
+                print(e)
+                traceback.print_exc()
 
-                except KeyError: # KeyError when field_name does not exists 
-                    field_value = ''
-
-                # If all ok: Add to dict 
-                csv_dict[field_name] = field_value
-
-            """ >>>> TMP >>>> <<<<< TMP <<<<< """
-            csv_dict['total_time'] = total_time
-            """ >>>> TMP >>>> <<<<< TMP <<<<< """
-            csv_dict['unique'] = unique_key
-            unique_key += 1
-            writer.writerow(csv_dict)
-
+#
+# Display result
+#
     print(str(row_errors) + " rows removed of " + str(unique_key + row_errors) + " in total" )
     print('____________________________')
-    print('____COUNT___accepted________')
     print('__# accepted rows per app___')
     print('____________________________')
     pprint.pprint(count)
     print('              of total : ' + str(unique_key))
     print('----------------------------')
 
-    print('____________________________')
-    print('___COUNT___erased___________')
-    print('__# accepted rows per app___')
-    print('____________________________')
+    print('____________________________|')
+    print('___# erased rows per app____|')
+    print('____________________________|')
     pprint.pprint(fail_count)
-    print('              of total : ', row_errors)
-    print('----------------------------')
-
+    print('           of total : ', row_errors,'|')
+    print('                            |')
+    print(' of which is FATAL ERRORS   |')
+    pprint.pprint(fail_count_fatal_error)
+    print('                            |')
+    print(' of which is PLUGIN ERR     |')
+    pprint.pprint(fail_count_plugin)
+    print('                            |')
+    print(' of which is CORDOVA ERR    |')
+    pprint.pprint(fail_count_deviceready)
+    print('----------------------------|')
+    print('----------------------------|')

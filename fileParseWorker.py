@@ -31,7 +31,8 @@ global tests
 tests= []
 global progress
 progress = 0
-
+global ROOT_PATH
+ROOT_PATH = ''
 
 def process_print(*argv):  
     """
@@ -203,6 +204,12 @@ def search_filepath(root_path, match):
     @param root_path : str          - not case sensitive
     @param match : str              - name of files to match 
     """
+    global ROOT_PATH
+    if root_path[-1] == '/':
+        ROOT_PATH = root_path
+    else:
+        ROOT_PATH = root_path + '/'
+        
     pathList = []
     pathList = findFilesInFolder(root_path, pathList, 'logcat', True)
 
@@ -243,7 +250,7 @@ def parse_file(filepath):
             device['filepath'] = '/'.join(remove_start)
 
             if not 'app_name' in device:
-                artifact_path = 'test-lab-vs5fwd255p258-y231pa7vdj4mx/' + device['filepath'].split('logcat')[0] + 'artifacts/accessibility1.meta'
+                artifact_path = ROOT_PATH + device['filepath'].split('logcat')[0] + 'artifacts/accessibility1.meta'
                 with open(artifact_path, 'rb') as file: 
                     lines = file.read().decode(errors='replace')
                     
