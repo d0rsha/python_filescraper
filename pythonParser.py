@@ -21,23 +21,7 @@ count = {}
 global fail_count
 fail_count = {}
 
-def print_shit(e):
-    print("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\//////////////////////////////////////")
-    print("   \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\///////////////////////////////////   ")
-    print("       \\\\\\\\\\\\\\\\\\\\\\\\\\\//////////////////////////////        ")
-    print("               \\\\\\\\\\\\\\\\\\\\//////////////////////               ")
-    print("                       \\\\\\\\\\\\/////////////                        ")
-    print("                              \\\\///////                               ")
-    print("                            login_time Error                            ")
-    print(e)
-    print("||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")
-    traceback.print_exc()
-    print("                              \\\\///////                               ")
-    print("                       \\\\\\\\\\\\/////////////                        ")
-    print("               \\\\\\\\\\\\\\\\\\\\//////////////////////               ")
-    print("       \\\\\\\\\\\\\\\\\\\\\\\\\\\//////////////////////////////        ")
-    print("   \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\///////////////////////////////////   ")
-    print("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\//////////////////////////////////////")
+
 
 def clean(dirty_string):
     """
@@ -45,8 +29,11 @@ def clean(dirty_string):
     """
     return re.sub('[+()\n\" ]', '', dirty_string)
 
+
+
 def timestamp_to_ms(stamp):
     """
+    Helper function
     Convert a timestamp on the following format: XXhXXmXXsXXXms to ms 
 
     ----------
@@ -61,8 +48,6 @@ def timestamp_to_ms(stamp):
     units = re.split('[\d]+', stamp)
     integers = [x for x in integers if x and not x == ' ']
     units = [x for x in units if x and not x == ' ']
-    # print('[INFO:CONSOLE] line=', 'integers', integers)
-    # print('[INFO:CONSOLE] line=', 'units   ', units)
 
     if (len(integers) != len(units)):
         raise ValueError('# integers does not match # units')
@@ -76,8 +61,32 @@ def timestamp_to_ms(stamp):
             time += (int(integer) * 1000 * 60)
         index += 1
 
-    # print('[INFO:CONSOLE] line=', 'time==', time)
     return time
+
+
+
+def parse_timestamp(searchName, attribute, regPattern, line, dev):
+    """
+        Helper function
+    """
+    if re.search(regPattern, line):
+        if "(total" not in line:
+            dev[attribute] = timestamp_to_ms(line.split("MainActivity: +")[1])
+        else:
+            dev[attribute] = timestamp_to_ms(line.split("MainActivity: +")[1].split("total")[0])
+            dev[attribute + '_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])    
+        dev['app_name']  = line.split(searchName)[1].split("/.MainActivity")[0]
+
+
+
+def clean_str(dirty_string):
+    """
+        Helper function
+        Clean string from wierd signs & chars given by regEx
+    """
+    return re.sub('[+()\n\" ]', '', dirty_string)
+
+
 
 def search_filepath(root_path, match):
     """
@@ -101,57 +110,34 @@ def search_filepath(root_path, match):
                 print ("File: " + str(filenumber).ljust(3) + " " + root + "/" + filename)
     return 
 
+
+
 def parse_line(line, device):
-    
     """
         Android specific 
     """
-    if "vityMana" in line:
+    #
+    # Displayed, Fully drawn && app_name
+    #
+    if "ActivityManager" in line:
         if "Displayed" in line:
-            ## Displayed
-            if re.search("ActivityManager(.*)Displayed(.*)\.MainActivity", line):
-                if "(total" not in line:
-                    device['displayed'] = timestamp_to_ms(line.split("MainActivity: +")[1])
-                else:
-                    device['displayed'] = timestamp_to_ms(line.split("MainActivity: +")[1].split("total")[0])
-                    device['displayed_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])    
-                device['app_name']  = line.split("Displayed ")[1].split("/.MainActivity")[0]
-            # Displayed BackdropActivity /!\ Must be else if of previous case 
-            elif re.search("ActivityManager(.*)Displayed(.*)\.BackdropActivity", line):
-                #activity = line.split(".")[-1].split(":")[0]
-                if 'app_name' in device:
-                    if device['app_name'] in line:
-                        if "(total" not in line:
-                            device['backdrop_displayed'] = timestamp_to_ms(line.split("BackdropActivity: +")[1])
-                        else:
-                            device['backdrop_displayed'] = timestamp_to_ms(line.split("BackdropActivity: +")[1].split("total")[0])
-        
-        # Fully Drawn 
-        elif re.search("Fully drawn", line):          
-            if "(total" not in line:          
-                device['fully_drawn'] = timestamp_to_ms(line.split("Fully drawn")[1].split(":")[1])
-            else:
-                device['fully_drawn'] = timestamp_to_ms(line.split("MainActivity: +")[1].split("total")[0])
-                device['fully_drawn_plus_total'] = timestamp_to_ms(line.split(".MainActivity:")[1].split("total")[1])
-         
+            parse_timestamp('Displayed ', 'displayed', "ActivityManager(.*)Displayed(.*)\.MainActivity", line, device)
+        elif "Fully drawn":
+            parse_timestamp('Fully drawn ', 'fully_drawn', "ActivityManager(.*)Fully drawn(.*)\.MainActivity", line, device)
+
     #
     #    Device 
     #
-    elif "device:" in line:
+    elif "device: Device" in line:
         if not "evaluateJavascript" in line:
             if re.search("device: Device", line):
+                device['plugin_loaded'] = True
                 attributes = line.split('{')[1].split(',')
                 # Add from current format=device: Device {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
                 for item in attributes:
-                    if clean(item) and item.split(':'):
-                        device[ clean(item.split(':')[0]) ] = item.split(':')[1]
-
-    
-    # Package installed 
-    #if "Package" in line:
-     #   if re.search("I\/Pm\([0-9]+\)(.*)Package(.*)installed", line) and "android" not in line:          
-      #      device['install_time'] = timestamp_to_ms(line.split("installed in")[1]) 
-            
+                    if clean_str(item) and item.split(':'):
+                        device[ clean_str(item.split(':')[0]) ] = item.split(':')[1]
+   
     elif "Cordova" in line:
         """
             Cordova specific 
@@ -159,87 +145,51 @@ def parse_line(line, device):
         # CordovaWebView Started (A)
         if re.search("Apache Cordova native platform", line):
             # device['cordova_start'] = float(line.split(":")[2])    
-            device['cordova_version'] = clean( line.split('platform version')[1].split('is')[0] )
+            device['cordova_version'] = clean_str( line.split('platform version')[1].split('is')[0] )
             
-        # CordovaWebView Loaded (B): Calculate diff from started untill loaded == B - A 
-        #elif re.search("CordovaWebView is running on device made by", line):
-         #   device['cordova_loaded'] = float(line.split(":")[2])    
-          #  device['my_deviceready_timing'] =  int( 1000*(device['cordova_loaded'] - device['cordova_start']) )
-           # del device['cordova_loaded']
-            #del device['cordova_start']
-
     #
-    #    Specific Chrome console output 
+    #   Deviceready event
     #
-    elif "INFO:" in line:
+    elif "deviceready" in line:
         # Ionic Native: deviceready
         if re.search("Ionic Native: deviceready event fired after", line):
             device['deviceready'] = line.split("deviceready event fired after")[1].split("ms")[0]       
         
         # Ionic Native: Problem 
         elif re.search("Ionic Native: deviceready did not fire within", line):
-            device['deviceready_error'] = "true"       
-
-        # Ionic Loaded 
-        elif re.search("ionic loaded:", line):
-            device['timer_ionic'] = line.split(":")[1].split("ms")[0].split('.')[0]     
-
+            device['deviceready_error'] = "true"         
+        # Ionic Native: Problem 
+        elif re.search("deviceready has not fired after 5 seconds", line):
+            device['deviceready_error'] = "true"  
+            
+    
+    #
+    #    Specific Chrome console output !WARNING! ( NOT ALWAYS IN LOG OUTPUT )
+    #
+    elif "INFO:" in line:
         # Cordova device Memory
-        elif re.search("device: MemoryUsage", line):
+        if re.search("device: MemoryUsage", line):
             attributes = line.split('{')[1].split(',')
             # Add from current format=device: MemoryUsage {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
             for item in attributes:
-                device[ clean( item.split(':')[0] ) ] = clean( item.split(':')[1].split(".")[0] )
+                device[ clean_str( item.split(':')[0] ) ] = clean_str( item.split(':')[1].split(".")[0] )
         
         # Cordova device Memory
         elif re.search("device: BrowserTiming", line):
             attributes = line.split('{')[1].split(',')
             # Add from current format=device: MemoryUsage {cordova:7.0.0,manufacturer:Google,model:Android SDK built for x86,platform:Android,serial:EMULATOR28X0X23X0,version:8.1.0
             for item in attributes:
-                device[ clean( item.split(':')[0] ) ] = clean( item.split(':')[1].split(".")[0] )
-        #
-        #    Specific to Boende Appen 
-        #
-        # checkBackendVersionIsActive
-        # elif re.search("checkBackendVersionIsActive", line):
-        #     if not 'timer_backend' in device:
-        #         device['timer_backend'] = int(line.split("checkBackendVersionIsActive:")[1].split("ms")[0].split(".")[0])
-        #         device['timer_backend_count'] = 1
-        #     else:
-        #         device['timer_backend_count'] += 1
-        # # storage.get('loginToken')
-        # elif re.search("get\('loginToken'\)", line):
-        #     if not 'timer_storage' in device:
-        #         device['timer_storage'] = int(line.split("storage.get('loginToken'):")[1].split("ms")[0].split(".")[0])
-        #         device['timer_storage_count'] = 1
-        #     else:
-        #         device['timer_storage_count'] += 1
-        # # loginService.login()->browser.on('loadstop')
-        # elif re.search("loginService.login", line):
-        #     if not 'timer_loginservice' in device:
-        #         device['timer_loginservice'] = int(line.split("->browser.on('loadstop'):")[1].split("ms")[0].split(".")[0])
-        #         device['timer_loginservice_count'] = 1
-        #     else:
-        #         device['timer_loginservice_count'] += 1
-        
-        #  login_time
-        elif re.search("login_time", line):
-            if not "4login_time" in device:
-                try:
-                    item = line.split("\"")[1]
-                    device[ '4login_time' ] = clean( item.split(':')[1].split("ms")[0].split(".")[0] )
-                except Exception as e:
-                    print_shit(e)
-        
-        elif re.search("backend_time", line):
-            if not "5backend_time" in device:
-                try:
-                    item = line.split("\"")[1]
-                    device[ '5backend_time' ] = clean( item.split(':')[1].split("ms")[0].split(".")[0] )
-                except Exception as e:
-                    print_shit(e)
-        
+                device[ clean_str( item.split(':')[0] ) ] = clean_str( item.split(':')[1].split(".")[0] )
+       
+    elif "FATAL EXCEPTION" in line:
+        device['fatal_exception'] = True
+
+    elif "UPDATE_DEVICE_STATS" in line and 'fatal_exception' in device:
+        device['API19'] = True
+    
     return device
+
+
 
 def parse_file(filepath):
     """
@@ -265,16 +215,53 @@ def parse_file(filepath):
                         device = parse_line(line, device)
                         linenumber += 1
                     except Exception as e:
-                        print("_________/!\\ Line Error /!\\_________")
-                        print(line)
+                        print('_________/!\\ Probbly error Parsing line /!\\_________')
                         print(e)
                         traceback.print_exc()
+
+            device['filepath'] = filepath # args.path
+
+            if not 'app_name' in device:
+                artifact_path = 'test-lab-vs5fwd255p258-y231pa7vdj4mx/' + device['filepath'].split('logcat')[0] + 'artifacts/accessibility1.meta'
+                with open(artifact_path, 'rb') as file: 
+                    lines = file.read().decode(errors='replace')
+                    
+                    lines = lines.split('\n')
+                    for line in lines:
+                        try:
+                            #process_print(line)
+                            if 'android.blankapp' in line:
+                                device['app_name'] = 'android.blankapp'
+                                break
+                            elif 'com.avrethem.plugins' in line:
+                                device['app_name'] = 'com-avrethem.plugins'
+                                break
+                            elif 'minimal' in line:
+                                device['app_name'] = 'minimal'
+                                break
+                            elif 'plugins.xwalk' in line:
+                                device['app_name'] = 'plugins.xwalk'
+                                break
+                            elif 'appen2.xwalk' in line:
+                                device['app_name'] = 'appen2.xwalk'
+                                break
+                            elif 'boende.xwalk' in line:
+                                device['app_name'] = 'boende.xwalk'
+                                break
+
+                        except Exception as e:
+                            print('_________/!\\ Probbly error Parsing line /!\\_________')
+                            print(e)
+                            traceback.print_exc()
+
     except Exception as e:
         print('_________/!\\ Probbly error Opening file /!\\_________')
         print(e)
         traceback.print_exc()
-    #print(device)
     return device
+
+
+
 
 """
     Main program

@@ -176,7 +176,7 @@ if __name__ == "__main__":
                     # Specific to BoendeAppen
                     # 'timer_backend','timer_backend_count','timer_storage','timer_storage_count',
                     # 'timer_loginservice','timer_loginservice_count',
-                    '3fully_splitted', '4login_time', '5backend_time'
+                    '3fully_splitted', '4login_time', '5backend_time', 'error'
                   ] 
     print_columns = [ 'app_name','displayed','2deviceready','fully_drawn', 'model', 'manufacturer', 'sdk-version']
     
@@ -214,7 +214,7 @@ if __name__ == "__main__":
                 data_row['app_name'] = re.sub('.stangastaden', '', data_row['app_name'])
                 #data_row['app_name'] = re.sub('xom.xwalk.browser', 'plugins.xwalk', data_row['app_name'])
                 # Skip old tests
-                if 'plugins' in data_row['app_name'] or 'minimal' in data_row['app_name'] or 'xom.xwalk.browser'in data_row['app_name'] or 'boendeapp' in data_row['app_name'] or 'appen2' in data_row['app_name'] or 'conferenc' in data_row['app_name'] or 'dialer' in data_row['app_name']:
+                if 'minimal' in data_row['app_name'] or 'xom.xwalk.browser'in data_row['app_name'] or 'boendeapp' in data_row['app_name'] or 'appen2' in data_row['app_name'] or 'conferenc' in data_row['app_name'] or 'dialer' in data_row['app_name']:
                    continue
 
                 if 'API19' in data_row:
@@ -278,20 +278,36 @@ if __name__ == "__main__":
                         tmp += "''".ljust(COL_SIZE) + ", "
 
                 tmp += t1
+                error = ''
                 if "fatal_exception" in data_row:
-                    tmp += " FATAL EXCEPT"
+                    error += " FATAL EXCEPT"
                 elif not "plugin_loaded" in data_row:
-                    tmp += " PLUGIN ERROR"
+                    error += " PLUGIN ERROR"
                 elif "deviceready_error" in data_row:
-                    tmp += " CORDOV ERROR"
+                    error += " CORDOV ERROR"
                 else:
-                    tmp += "             "
+                    error += "             "
+                data_row['error'] = error
+                tmp += error
                 tmp += ' ' + data_row['filepath']
                 print(tmp)
 
                 count_errors(data_row)
                 row_errors += 1
 
+                for field_name in csv_columns:
+                    try:
+                        field_value = clean_str( str(data_row[field_name]) )
+                        if '1displayed' == field_name or '2deviceready' == field_name or '3fully_drawn' == field_name:
+                            total_time += int(data_row[field_name])
+                    except KeyError: # KeyError when field_name does not exists 
+                        field_value = ''
+
+                    csv_dict[field_name] = field_value
+
+                csv_dict['unique'] = unique_key
+                unique_key += 1
+                writer.writerow(csv_dict)
 
             except Exception as e:
                 print(e)

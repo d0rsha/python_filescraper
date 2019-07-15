@@ -231,7 +231,6 @@ def parse_file(filepath):
                     break
                 for line in lines:
                     try:
-                        # TODO: Felsök parse_line ...
                         device = parse_line(line, device)
                         linenumber += 1
                     except Exception as e:
